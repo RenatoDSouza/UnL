@@ -1,0 +1,7 @@
+dataset_path: data/femnist_sample.npz
+num_clients: 5
+num_rounds: 3
+excluded_client_id: client_0
+seed: 42
+prefer_gpu: true
+

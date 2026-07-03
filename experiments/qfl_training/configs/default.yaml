@@ -1,0 +1,6 @@
+dataset_path: data/femnist_sample.npz
+num_clients: 5
+num_rounds: 3
+seed: 42
+prefer_gpu: true
+

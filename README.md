@@ -40,8 +40,28 @@ Projeto base para Quantum Federated Learning (QFL) com dois experimentos separad
 - `experiments/qfl_training`: fluxo do experimento de QFL puro.
 - `experiments/qfl_unlearning_qfi`: fluxo do experimento de unlearning baseado em QFI.
 
+## Stack
+
+- `PennyLane` como biblioteca quântica principal.
+- `lightning.gpu` como backend preferencial, com fallback automático para `lightning.qubit` e `default.qubit`.
+- `PyTorch` e `NumPy` para suporte numérico e integração futura com pipelines híbridos.
+
+## Dados
+
+O repositório assume um arquivo local `data/femnist_sample.npz` com chaves `x` e `y` para facilitar execução controlada do pipeline.
+A ingestão completa do FEMNIST do LEAF deve ser adicionada em seguida como etapa dedicada de download e parsing do dataset.
+
 ## Próximos passos
 
-1. Definir a stack exata do projeto, por exemplo `PennyLane` ou `Qiskit`.
-2. Implementar o modelo quântico, a estratégia de agregação e o particionamento FEMNIST.
-3. Adicionar testes unitários e integração mínima para os dois experimentos.
+1. Adicionar o downloader/parsing do FEMNIST do LEAF no formato original.
+2. Refinar o modelo quântico com codificação mais fiel ao caso de uso e treino por gradiente.
+3. Criar testes automatizados para agregação, particionamento e rotina de unlearning.
+
+## Execução
+
+Os scripts de referência estão em:
+
+- `experiments/qfl_training/scripts/run_training.py`
+- `experiments/qfl_unlearning_qfi/scripts/run_unlearning.py`
+
+Ambos assumem um arquivo local `data/femnist_sample.npz` durante esta fase inicial do projeto.
