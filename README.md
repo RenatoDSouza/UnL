@@ -286,7 +286,7 @@ Interpretação desejada:
 
 - quanto menor, melhor para privacidade;
 - valores altos indicam maior risco de vazamento sobre o cliente removido;
-- o projeto tenta usar a biblioteca `Adversarial Robustness Toolbox (ART)` quando disponível.
+- o projeto usa a biblioteca `Adversarial Robustness Toolbox (ART)` quando disponível.
 
 Se `ART` não estiver instalado no ambiente, o projeto usa um proxy simples para manter o pipeline executável.
 
@@ -304,7 +304,8 @@ Ou instale o pacote diretamente:
 pip install adversarial-robustness-toolbox
 ```
 
-Quando `ART` estiver presente, o experimento fica pronto para usar o backend de ataque da biblioteca.
+Quando `ART` estiver presente, o experimento executa um ataque `MembershipInferenceBlackBox` em cima de um adaptador
+`BlackBoxClassifier` construído a partir das probabilidades previstas pelo modelo quântico.
 Sem `ART`, o código continua executando com uma aproximação interna para não interromper o fluxo.
 
 #### 4. `qfi_trace`
@@ -359,7 +360,7 @@ Limitações atuais:
 - o parser completo do FEMNIST do LEAF ainda não foi implementado;
 - o treino quântico ainda usa uma aproximação simples;
 - o fluxo de unlearning com QFI está estruturado, mas ainda é um ponto de partida metodológico;
-- a integração com ART para MIA é opcional e, nesta etapa, usa fallback quando a biblioteca não está presente;
+- a integração com ART para MIA é efetiva quando a biblioteca está instalada, mas ainda mantém fallback quando a API do ambiente é incompatível;
 - o formato `npz` é uma camada intermediária para permitir execução rápida enquanto o ingest pipeline definitivo não entra.
 
 ## Próximos passos recomendados
