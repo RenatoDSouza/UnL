@@ -17,7 +17,7 @@ def main() -> None:
     data_path = Path("data/femnist_sample.npz")
     data = np.load(data_path)
     x = compress_to_quadrants(normalize_images(data["x"]))
-    y = data["y"].astype(float)
+    y = (data["y"] > 0).astype(int)
     client_splits = partition_by_client(x, y, num_clients=5)
     clients = [FederatedClient(split.client_id, split.x, split.y) for split in client_splits]
     initial_weights = np.zeros((2, x.shape[1], 3), dtype=float)
