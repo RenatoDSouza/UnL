@@ -1,0 +1,12 @@
+\section{Methodology}
+\label{sec:methodology}
+
+The proposed system consists of one central server and five clients. The server coordinates rounds of training, while each client performs local updates using a PennyLane-based quantum classifier. After local computation, the server aggregates updates using a sample-size-weighted strategy, following the standard federated optimization principle introduced in FedAvg \cite{fedavg}.
+
+The experimental pipeline is divided into two parts. In the first experiment, the system performs pure QFL training over all five clients. In the second experiment, one client is excluded from the federation and the model is retrained on the remaining clients. The unlearning procedure uses QFI to quantify the sensitivity of the updated model and supports evaluation of whether the disconnected client has been effectively forgotten \cite{qfi,federated_unlearning_active_forgetting,forgettable_federated_linear_learning}.
+
+The FEMNIST data are reduced to a compact four-feature representation to make the quantum circuit feasible. Although this representation is a simplification of the original image structure, it allows controlled experimentation with the federated and unlearning workflows while the full ingestion pipeline is developed \cite{leaf}. This reduction is implemented as quadrant compression over normalized 28 \(\times\) 28 images.
+
+The implementation is intentionally structured for reproducibility. Both experiments use `seed = 42`, `num_clients = 5`, and `num_rounds = 3`. The unlearning experiment excludes `client_0`, yielding four active clients in the post-unlearning retraining phase. The scripts read the intermediate dataset from `data/femnist_sample.npz`, write JSON summaries to dedicated output directories, and maintain checkpoints so that interrupted runs can be resumed without discarding previous progress.
+
+From a software-engineering perspective, the repository is organized around a clean separation of concerns: dataset utilities live in `src/qfl/data`, federated orchestration in `src/qfl/federated`, quantum circuit logic in `src/qfl/quantum`, and utility code such as deterministic seeding in `src/qfl/utils`. This structure keeps the experiment scripts concise and makes the project easier to test and extend.

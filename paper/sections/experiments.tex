@@ -1,0 +1,17 @@
+\section{Experimental Design}
+\label{sec:experiments}
+
+Two experiments are considered, both using the same dataset preparation, client partitioning strategy, and deterministic seed.
+
+\subsection{Experiment I: Pure QFL Training}
+
+The first experiment trains a global quantum model using the full federation of five clients. The input data are loaded from `data/femnist_sample.npz`, normalized, compressed into four quadrant features, and partitioned into `num_clients = 5` client splits. The model is trained for `num_rounds = 3` with `seed = 42`. This setting evaluates convergence behavior, aggregation stability, and the feasibility of quantum training under heterogeneous client partitions. The use of a compact variational circuit is motivated by the current state of PennyLane-based QML tooling and the need to keep the circuit tractable during iterative federated updates \cite{pennylane,lightning2024,qfl_towards_2023}.
+
+\subsection{Experiment II: QFI-Based Machine Unlearning}
+
+The second experiment disconnects one client from the federation and re-evaluates the global model after retraining on the remaining clients. In the current implementation, `client_0` is excluded, leaving four active clients. The unlearning procedure is examined using `forget_set_accuracy`, `retain_set_accuracy`, `membership inference attack success rate`, and `qfi_trace`. The training and unlearning phases are both executed for `num_rounds = 3` with `seed = 42`. The design follows the literature on federated unlearning and certified data removal, but adapts it to a quantum setting where QFI provides a geometry-aware proxy for model influence \cite{unlearning_survey_2024,federated_unlearning_active_forgetting,forgettable_federated_linear_learning,qfi}.
+
+The evaluation is designed to answer the following questions:
+Does the model lose predictive power on the forgotten client's data? Does the model preserve performance on the retained clients? Does unlearning reduce exposure to membership inference attacks? Is there a measurable reduction in the influence of the removed client according to QFI? These questions align with the privacy and completeness criteria commonly used in machine unlearning studies \cite{mia,unlearning_survey_2024}.
+
+The implementation writes the training summary to `experiments/qfl_training/outputs/training_summary.json` and the unlearning summary to `experiments/qfl_unlearning_qfi/outputs/unlearning_summary.json`. Checkpoints are also maintained for both experiments so that execution can be resumed from the last completed round.

@@ -32,5 +32,7 @@ class QuantumClassifier:
 
     def qfi_trace(self, inputs):
         metric_tensor = qml.metric_tensor(self._qnode, approx="block-diag")
+        n = self.weights.size
         tensors = [metric_tensor(sample, self.weights) for sample in inputs]
-        return float(sum(pnp.trace(tensor) for tensor in tensors))
+        return float(sum(pnp.trace(tensor.reshape(n, n)) for tensor in tensors))
+

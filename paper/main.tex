@@ -1,0 +1,49 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[margin=1in]{geometry}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{amsmath,amssymb}
+\usepackage{hyperref}
+\usepackage{enumitem}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{xcolor}
+\usepackage{float}
+\usepackage{array}
+\usepackage{longtable}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=blue,
+  citecolor=blue,
+  urlcolor=blue
+}
+
+\title{Quantum Federated Learning with Quantum Fisher Information-Based Machine Unlearning on FEMNIST}
+\author{Renato D. Souza}
+\date{}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+This paper presents a structured Quantum Federated Learning (QFL) framework built on PennyLane for a federated architecture composed of one central server and five clients. The study considers the FEMNIST dataset and evaluates two experimental settings: pure federated quantum training and machine unlearning using Quantum Fisher Information (QFI) after disconnecting one client from the federation. We define evaluation criteria for the unlearning process using forget-set accuracy, retain-set accuracy, membership inference attack success rate, and QFI trace. The manuscript provides a reproducible LaTeX skeleton aligned with the implementation artifacts of the project and is designed to be populated with empirical results from the final experimental pipeline.
+\end{abstract}
+
+\input{sections/introduction}
+\input{sections/background}
+\input{sections/methodology}
+\input{sections/experiments}
+\input{sections/results_expected}
+\input{sections/discussion}
+\input{sections/conclusion}
+
+\bibliographystyle{plain}
+\bibliography{references}
+
+\end{document}
+

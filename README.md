@@ -122,31 +122,13 @@ pip install -e .
 
 ## Dados
 
-Os scripts atuais esperam um arquivo local:
-
-```text
-data/femnist_sample.npz
-```
-
-Esse arquivo deve conter duas chaves:
-
-- `x`: imagens do FEMNIST com shape aproximado `(n_amostras, 28, 28)`
-- `y`: rótulos associados
-
-### Observação importante
-
-O projeto ainda não inclui o downloader/parser completo do FEMNIST original do LEAF.
-Portanto, nesta versão, você precisa disponibilizar manualmente um arquivo `npz` compatível para executar os scripts.
-
-## Como preparar os dados para rodar agora
-
-Se você já tiver um conjunto FEMNIST convertido para `npz`, coloque-o em:
-
-```text
-data/femnist_sample.npz
-```
-
-Se ainda não tiver esse arquivo, os scripts não vão executar até a etapa de ingestão ser implementada.
+O projeto utiliza a biblioteca `flwr-datasets[vision]` para baixar e gerenciar o conjunto de dados FEMNIST (`flwrlabs/femnist`).
+* **Download automático**: O download é feito automaticamente no primeiro run a partir do Hugging Face Hub.
+* **Particionamento**: O dataset é dividido de forma natural utilizando o identificador do escritor (`writer_id`), gerando partições não-IID (Non-IID) para cada cliente, simulando o cenário federado real.
+* **Visualização**: Você pode inspecionar e renderizar uma grade de amostras da primeira partição executando o script:
+  ```bash
+  python3 data/visualize_femnist.py
+  ```
 
 ## Como rodar os experimentos
 
@@ -168,12 +150,11 @@ python3 experiments/qfl_training/scripts/run_training.py
 
 O que esse script faz:
 
-1. Carrega `data/femnist_sample.npz`
+1. Carrega as partições do FEMNIST para cada cliente automaticamente via `flwr-datasets`
 2. Normaliza as imagens
-3. Reduz cada imagem para 4 features via quadrantes
-4. Divide os dados entre 5 clientes
-5. Executa 3 rodadas de treinamento federado
-6. Salva um resumo em:
+3. Reduz cada imagem para 4 características usando médias por quadrante (para adequação ao circuito quântico)
+4. Executa 3 rodadas de treinamento federado
+5. Salva um resumo em:
 
 ```text
 experiments/qfl_training/outputs/training_summary.json
@@ -195,11 +176,10 @@ python3 experiments/qfl_unlearning_qfi/scripts/run_unlearning.py
 
 O que esse script faz:
 
-1. Carrega `data/femnist_sample.npz`
+1. Carrega as partições do FEMNIST para cada cliente automaticamente via `flwr-datasets`
 2. Normaliza as imagens
-3. Reduz cada imagem para 4 features via quadrantes
-4. Divide os dados entre 5 clientes
-5. Executa treinamento federado inicial
+3. Reduz cada imagem para 4 características usando médias por quadrante (para adequação ao circuito quântico)
+4. Executa treinamento federado inicial
 6. Remove o cliente `client_0`
 7. Reexecuta a federação sem esse cliente
 8. Calcula um score de QFI
@@ -357,19 +337,16 @@ Esta é uma base funcional, mas ainda não é a versão final de pesquisa.
 
 Limitações atuais:
 
-- o parser completo do FEMNIST do LEAF ainda não foi implementado;
 - o treino quântico ainda usa uma aproximação simples;
 - o fluxo de unlearning com QFI está estruturado, mas ainda é um ponto de partida metodológico;
-- a integração com ART para MIA é efetiva quando a biblioteca está instalada, mas ainda mantém fallback quando a API do ambiente é incompatível;
-- o formato `npz` é uma camada intermediária para permitir execução rápida enquanto o ingest pipeline definitivo não entra.
+- a integração com ART para MIA é efetiva quando a biblioteca está instalada, mas ainda mantém fallback quando a API do ambiente é incompatível.
 
 ## Próximos passos recomendados
 
-1. Implementar o download e parsing do FEMNIST original do LEAF.
-2. Substituir a heurística de treino por otimização variacional real em `PennyLane`.
-3. Formalizar o pipeline de unlearning com QFI com métricas mais robustas.
-4. Adicionar CLI para execução parametrizada via YAML.
-5. Expandir a suíte de testes.
+1. Substituir a heurística de treino por otimização variacional real em `PennyLane`.
+2. Formalizar o pipeline de unlearning com QFI com métricas mais robustas.
+3. Adicionar CLI para execução parametrizada via YAML.
+4. Expandir a suíte de testes.
 
 ## Resumo rápido
 
@@ -382,4 +359,72 @@ python3 experiments/qfl_training/scripts/run_training.py
 python3 experiments/qfl_unlearning_qfi/scripts/run_unlearning.py
 ```
 
-Se você ainda não tem o arquivo `data/femnist_sample.npz`, primeiro precisa gerar esse dataset intermediário.
+Os dados serão baixados de forma automática no primeiro uso.
+
+## Execução no Runpod
+
+Se você for rodar este projeto em uma máquina Runpod:
+
+1. Conecte por SSH usando sua chave privada.
+2. Envie o repositório para a máquina remota.
+3. Execute o bootstrap de dependências.
+4. Rode os experimentos.
+
+### Estrutura de suporte
+
+Os scripts e instruções específicas para Runpod estão em:
+
+- `runpod/README.md`
+- `runpod/setup_runpod.sh`
+- `runpod/run_all.sh`
+- `runpod/run_training_only.sh`
+- `runpod/run_unlearning_only.sh`
+
+### Fluxo resumido
+
+No Runpod:
+
+```bash
+cd /workspace/QfederatedUlearning
+bash runpod/setup_runpod.sh
+bash runpod/run_all.sh
+```
+
+## Checkpoints e progresso
+
+Cada experimento grava checkpoints em:
+
+- `experiments/qfl_training/outputs/checkpoints/`
+- `experiments/qfl_unlearning_qfi/outputs/checkpoints/`
+
+Arquivos gerados:
+
+- `training_start.json`
+- `round_1.json`, `round_2.json`, `round_3.json`
+- `training_complete.json`
+- `unlearning_start.json`
+- `unlearning_complete.json`
+
+Durante a execução, o terminal mostra uma barra ASCII de progresso para cada experimento.
+
+### Retomada automática
+
+Os experimentos salvam um estado resumido em:
+
+- `experiments/qfl_training/outputs/checkpoints/training_state.json`
+- `experiments/qfl_unlearning_qfi/outputs/checkpoints/unlearning_state.json`
+
+Se a execução for interrompida, o treinamento tenta continuar do último round salvo.
+O unlearning usa o último estado concluído salvo para evitar recomputação desnecessária.
+
+Os checkpoints incluem:
+
+- passo atual
+- total de passos
+- ETA estimada
+- timestamp UTC
+- métricas parciais ou resumo final
+
+### Observação
+
+Os dados do FEMNIST são mantidos em cache local após o primeiro download. Se você estiver rodando em ambientes sem internet ou com restrição de rede, certifique-se de realizar o download das partições previamente.

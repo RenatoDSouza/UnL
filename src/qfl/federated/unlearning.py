@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 import numpy as np
+from pennylane import numpy as pnp
 
 from qfl.federated.mia import membership_inference_success_rate
 from qfl.federated.metrics import UnlearningMetrics, evaluate_accuracy, random_baseline_accuracy
@@ -24,7 +25,7 @@ class QFIUnlearningRun:
             raise ValueError("At least one active client is required")
         base_results = FederatedTrainingRun(self.training_run.server, active_clients).run(num_rounds=num_rounds)
         model = QuantumClassifier(num_wires=active_clients[0].x_train.shape[1], prefer_gpu=True)
-        model.weights = np.asarray(base_results[-1].global_weights)
+        model.weights = pnp.array(base_results[-1].global_weights, requires_grad=True)
         qfi_score = model.qfi_trace(active_clients[0].x_train[: min(4, len(active_clients[0].x_train))])
         forget_x = excluded_clients[0].x_train if excluded_clients else np.empty((0, active_clients[0].x_train.shape[1]))
         forget_y = excluded_clients[0].y_train if excluded_clients else np.empty((0,))

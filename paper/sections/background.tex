@@ -1,0 +1,10 @@
+\section{Background}
+\label{sec:background}
+
+Federated learning enables multiple clients to collaboratively train a model without centralizing raw data \cite{fedavg,kairouz2019}. In the FEMNIST benchmark, each client corresponds naturally to a user or device, creating a heterogeneous and non-i.i.d.\ data distribution. This setting is well suited for studying robust aggregation and privacy-aware learning \cite{leaf}.
+
+PennyLane provides a practical framework for implementing variational quantum circuits with automatic differentiation \cite{pennylane}. In this project, a small-width quantum model is used to keep the circuit tractable while preserving the experimental structure required for federated training. The architecture uses a GPU-capable backend when available, falling back to CPU execution otherwise, which aligns with the Lightning simulator family used for accelerated hybrid quantum computation \cite{lightning2024}.
+
+Quantum Fisher Information captures how sensitive a quantum state is to parameter changes \cite{qfi}. In the context of unlearning, we use QFI as a geometric proxy for the influence of training data and parameter updates. The hypothesis is that successful unlearning should reduce the dependence of the global model on the removed client's contribution while preserving performance on retained clients. This interpretation is consistent with recent work on machine unlearning, including federated unlearning strategies and certified unlearning formulations \cite{unlearning_survey_2024,federated_unlearning_active_forgetting,forgettable_federated_linear_learning}.
+
+Membership inference attacks provide a practical privacy probe for evaluating whether a model still retains identifiable information about specific participants \cite{mia}. For this reason, the unlearning experiment combines accuracy-based and privacy-based metrics rather than relying on a single geometric quantity.
