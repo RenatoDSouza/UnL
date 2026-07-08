@@ -211,10 +211,18 @@ def load_unlearning_config(payload: dict[str, Any]) -> UnlearningExperimentConfi
 
 def _build_clients(num_clients: int, dataset_path: str | None = None, prefer_gpu: bool = True, encoding: str = "angle", data_reuploads: int = 1):
     if dataset_path:
-        x, y = load_femnist_source(dataset_path)
-        if x.ndim == 3:
-            x = compress_to_quadrants(normalize_images(x))
-        client_splits = partition_by_client(x, y, num_clients=num_clients)
+        dataset_file = Path(dataset_path)
+        if dataset_file.exists():
+            x, y = load_femnist_source(dataset_file)
+        else:
+            LOGGER.warning("dataset_path=%s not found; falling back to remote FEMNIST partitions", dataset_path)
+            x = y = None
+        if x is not None and y is not None:
+            if x.ndim == 3:
+                x = compress_to_quadrants(normalize_images(x))
+            client_splits = partition_by_client(x, y, num_clients=num_clients)
+        else:
+            client_splits = load_femnist_partitions(num_clients=num_clients)
     else:
         client_splits = load_femnist_partitions(num_clients=num_clients)
     clients = [

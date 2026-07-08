@@ -1,4 +1,4 @@
-dataset_path: data/femnist_sample.npz
+dataset_path: null
 num_clients: 5
 num_rounds: 3
 excluded_client_id: client_0
