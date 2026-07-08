@@ -12,6 +12,8 @@ from qfl.utils.checkpoint import load_checkpoint, save_checkpoint
 from qfl.utils.io import ensure_dir, write_json
 from qfl.utils.progress import ProgressTracker
 from qfl.utils.seed import set_seed
+from tqdm import tqdm
+
 
 
 def main() -> None:
@@ -30,8 +32,8 @@ def main() -> None:
     results: list[dict[str, float]] = []
     if checkpoint and checkpoint.get("results"):
         results = list(checkpoint["results"])
-    for round_index in range(start_round, 3):
-        print(progress.progress_line(round_index))
+    for round_index in tqdm(range(start_round, 3), desc="Rodadas Federadas"):
+        tqdm.write(progress.progress_line(round_index))
         partial = run.run(num_rounds=1)
         round_metrics = partial[-1].metrics
         results.append(round_metrics)

@@ -77,11 +77,12 @@ def _build_art_blackbox_classifier(model: QuantumClassifier, num_features: int):
 
     adapter = _BlackBoxAdapter(model=model)
     return BlackBoxClassifier(
-        predict=adapter.predict,
+        predict_fn=adapter.predict,
         input_shape=(num_features,),
         nb_classes=2,
         clip_values=(0.0, 1.0),
     )
+
 
 
 def _mean_correct_confidence(model: QuantumClassifier, x: np.ndarray, y: np.ndarray) -> float:

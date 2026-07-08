@@ -30,9 +30,20 @@ class QuantumClassifier:
         probs = self.predict_proba(inputs)[:, 1]
         return pnp.mean((probs - targets) ** 2)
 
-    def qfi_trace(self, inputs):
+    @property
+    def flat_weights(self):
+        return pnp.asarray(self.weights).reshape(-1)
+
+    @flat_weights.setter
+    def flat_weights(self, values):
+        self.weights = pnp.array(values, requires_grad=True).reshape(self.weights.shape)
+
+    def qfi_matrix(self, inputs, regularization: float = 1e-6):
         metric_tensor = qml.metric_tensor(self._qnode, approx="block-diag")
         n = self.weights.size
         tensors = [metric_tensor(sample, self.weights) for sample in inputs]
-        return float(sum(pnp.trace(tensor.reshape(n, n)) for tensor in tensors))
+        qfi = sum(pnp.asarray(tensor).reshape(n, n) for tensor in tensors) / max(1, len(tensors))
+        return qfi + regularization * pnp.eye(n)
 
+    def qfi_trace(self, inputs):
+        return float(pnp.trace(self.qfi_matrix(inputs)))
