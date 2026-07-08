@@ -1,0 +1,26 @@
+{
+  "current_step": 3,
+  "eta_seconds": 0.0,
+  "label": "QFL training (angle, seed=44)",
+  "status": "completed",
+  "summary": {
+    "encoding": "angle",
+    "metrics": {
+      "num_clients": 5.0
+    },
+    "rounds": [
+      {
+        "num_clients": 5.0
+      },
+      {
+        "num_clients": 5.0
+      },
+      {
+        "num_clients": 5.0
+      }
+    ],
+    "seed": 44
+  },
+  "total_steps": 3,
+  "updated_at_utc": "2026-07-08T15:49:21.890463+00:00"
+}
