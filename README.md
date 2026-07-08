@@ -7,18 +7,21 @@ Implementação base de **Quantum Federated Learning (QFL)** com foco em dois ex
    - Os clientes treinam localmente um modelo quântico em `PennyLane`.
    - O servidor agrega as atualizações para produzir o modelo global.
 
-2. **Machine unlearning com Quantum Fisher Information (QFI)**
+2. **Machine unlearning com SHAP + QFI**
    - O mesmo ambiente federado é treinado inicialmente.
    - Um cliente é desconectado da federação.
-   - A influência histórica desse cliente é anulada por um fluxo baseado em QFI.
+   - A influência histórica desse cliente é reduzida por um fluxo híbrido com SHAP e Matriz de Fisher Quântica.
 
-O repositório já está organizado para manter os dois experimentos em pastas separadas.
+O repositório foi reorganizado para separar responsabilidades:
+
+- `src/` contém a lógica reutilizável e o pipeline central.
+- `experiments/` contém apenas wrappers de execução, configs, logs e outputs.
+- `tests/` contém validação automatizada do comportamento do núcleo.
 
 ## Estrutura do projeto
 
 ```text
 .
-├── data/
 ├── experiments/
 │   ├── qfl_training/
 │   │   ├── configs/
@@ -34,6 +37,7 @@ O repositório já está organizado para manter os dois experimentos em pastas s
 │   └── qfl/
 │       ├── common/
 │       ├── data/
+│       ├── experiments/
 │       ├── federated/
 │       ├── quantum/
 │       └── utils/
@@ -60,12 +64,18 @@ O repositório já está organizado para manter os dois experimentos em pastas s
 
 Nesta fase, o repositório contém:
 
-- a arquitetura de servidor e cliente federado;
-- o modelo quântico em `PennyLane`;
-- a rotina de agregação do servidor;
-- a rotina de unlearning baseada em QFI;
-- scripts separados para cada experimento;
-- testes mínimos para validar particionamento e agregação.
+- arquitetura de servidor e cliente federado;
+- modelo quântico em `PennyLane`;
+- rotina de agregação do servidor;
+- rotina de unlearning híbrida baseada em SHAP + QFI;
+- orquestrador central em `src/qfl/experiments/pipeline.py`;
+- wrappers finos de execução para treino e unlearning;
+- suporte a múltiplas seeds com agregação estatística;
+- estatísticas agregadas com média, desvio-padrão, mediana, min/max e CI aproximado;
+- baselines comparativos de unlearning: `no_unlearning`, `shap_only`, `qfi_only`, `shap_qfi`;
+- exportação de logs em JSON e CSV por seed;
+- ablation study sobre `angle`, `iqp` e `reupload`;
+- testes mínimos para validar particionamento, agregação e unlearning.
 
 ## Requisitos de ambiente
 
@@ -122,17 +132,45 @@ pip install -e .
 
 ## Dados
 
-O projeto utiliza a biblioteca `flwr-datasets[vision]` para baixar e gerenciar o conjunto de dados FEMNIST (`flwrlabs/femnist`).
-* **Download automático**: O download é feito automaticamente no primeiro run a partir do Hugging Face Hub.
-* **Particionamento**: O dataset é dividido de forma natural utilizando o identificador do escritor (`writer_id`), gerando partições não-IID (Non-IID) para cada cliente, simulando o cenário federado real.
-* **Visualização**: Você pode inspecionar e renderizar uma grade de amostras da primeira partição executando o script:
-  ```bash
-  python3 data/visualize_femnist.py
-  ```
+O projeto utiliza `flwr-datasets[vision]` para baixar e gerenciar o conjunto FEMNIST (`flwrlabs/femnist`).
+
+- **Download automático**: acontece no primeiro `run`.
+- **Particionamento**: usa `writer_id`, gerando partições não-IID.
+- **Visualização**: há um script para inspeção de amostras em `data/visualize_femnist.py`.
+
+## Como o código está organizado
+
+### `src/`
+
+Contém a lógica reutilizável:
+
+- `qfl.data`: carregamento e particionamento do FEMNIST;
+- `qfl.quantum`: modelo quântico e QFI;
+- `qfl.federated`: cliente, servidor, estratégia, métricas e unlearning;
+- `qfl.experiments`: pipeline único de treino e unlearning;
+- `qfl.utils`: seed, checkpoint, I/O e progresso.
+
+### `experiments/`
+
+Contém wrappers de execução:
+
+- lêem YAML;
+- constroem dataclasses de configuração;
+- chamam funções de `src/qfl/experiments/pipeline.py`;
+- escrevem outputs e checkpoints.
+
+### `tests/`
+
+Contém testes automatizados para:
+
+- particionamento;
+- agregação;
+- pipeline híbrido de unlearning;
+- compatibilidade com o wrapper legado.
 
 ## Como rodar os experimentos
 
-Os dois experimentos são independentes e ficam em diretórios distintos.
+Os wrappers em `experiments/` são finos e chamam o pipeline central em `src/qfl/experiments/pipeline.py`.
 
 ### 1. Experimento de treinamento QFL
 
@@ -148,19 +186,16 @@ Execute com:
 python3 experiments/qfl_training/scripts/run_training.py
 ```
 
-O que esse script faz:
+Fluxo:
 
-1. Carrega as partições do FEMNIST para cada cliente automaticamente via `flwr-datasets`
-2. Normaliza as imagens
-3. Reduz cada imagem para 4 características usando médias por quadrante (para adequação ao circuito quântico)
-4. Executa 3 rodadas de treinamento federado
-5. Salva um resumo em:
+1. Lê `experiments/qfl_training/configs/default.yaml`.
+2. Monta `TrainingExperimentConfig`.
+3. Chama `run_training_experiment()`.
+4. Executa o experimento para cada seed em `seeds` ou, se ausente, usa `seed`.
+5. Salva um resumo agregado em `experiments/qfl_training/outputs/training_summary.json`.
+6. Exporta logs por seed em JSON e CSV para facilitar análise posterior.
 
-```text
-experiments/qfl_training/outputs/training_summary.json
-```
-
-### 2. Experimento de machine unlearning com QFI
+### 2. Experimento de machine unlearning com SHAP + QFI
 
 Script:
 
@@ -174,20 +209,17 @@ Execute com:
 python3 experiments/qfl_unlearning_qfi/scripts/run_unlearning.py
 ```
 
-O que esse script faz:
+Fluxo:
 
-1. Carrega as partições do FEMNIST para cada cliente automaticamente via `flwr-datasets`
-2. Normaliza as imagens
-3. Reduz cada imagem para 4 características usando médias por quadrante (para adequação ao circuito quântico)
-4. Executa treinamento federado inicial
-6. Remove o cliente `client_0`
-7. Reexecuta a federação sem esse cliente
-8. Calcula um score de QFI
-9. Salva o resultado em:
-
-```text
-experiments/qfl_unlearning_qfi/outputs/unlearning_summary.json
-```
+1. Lê `experiments/qfl_unlearning_qfi/configs/default.yaml`.
+2. Monta `UnlearningExperimentConfig`.
+3. Chama `run_unlearning_experiment()`.
+4. Executa o fluxo para cada seed em `seeds` ou, se ausente, usa `seed`.
+5. Executa treino federado inicial.
+6. Remove o cliente configurado em `excluded_client_id`.
+7. Aplica unlearning híbrido SHAP + QFI.
+8. Salva um resumo agregado em `experiments/qfl_unlearning_qfi/outputs/unlearning_summary.json`.
+9. Exporta logs por seed em JSON e CSV.
 
 ## Configurações
 
@@ -202,7 +234,24 @@ Eles documentam parâmetros como:
 - número de clientes;
 - número de rodadas;
 - cliente excluído no unlearning;
+- lista de seeds para repetição estatística;
+- lista de encodings para ablation study;
+- número de data reuploads;
 - preferência por GPU.
+
+Esses YAMLs alimentam apenas a camada de execução. A lógica de negócio mora em `src/qfl/experiments/pipeline.py`.
+
+## Encodings usados no estudo
+
+| Encoding | Papel | Observação crítica |
+| --- | --- | --- |
+| `angle` | Baseline mais simples | Mais estável e barato, mas pode ter menor capacidade expressiva |
+| `iqp` | Encoding com interações quânticas | Mais sensível ao número de wires e à escala de entrada |
+| `reupload` | Data re-uploading | Aumenta a expressividade, mas também o custo e a chance de overfitting |
+
+O `IQPEmbedding` merece atenção extra: se a dimensionalidade efetiva dos dados crescer ou a normalização não for consistente, o circuito pode ficar mais ruidoso e menos interpretável. Por isso ele deve ser analisado separadamente no ablation, e não apenas como uma média global.
+
+O baseline `retrain_complete` é computacionalmente mais caro, mas é o comparador certo: ele treina do zero apenas com os clientes remanescentes e serve como referência para medir o custo/benefício real do unlearning.
 
 ## Saída dos experimentos
 
@@ -212,15 +261,16 @@ Saída esperada:
 
 ```json
 {
+  "num_runs": 3,
   "rounds": [
     { "num_clients": 5.0 },
     { "num_clients": 5.0 },
     { "num_clients": 5.0 }
-  ]
+  ],
+  "num_clients_mean": 5.0,
+  "num_clients_std": 0.0
 }
 ```
-
-O formato pode evoluir conforme o treinamento quântico ficar mais sofisticado.
 
 ### Unlearning
 
@@ -228,15 +278,25 @@ Saída esperada:
 
 ```json
 {
-  "qfi_trace": 0.0,
-  "remaining_clients": 4.0,
-  "excluded_client": "client_0"
+  "num_runs": 3,
+  "runs": [],
+  "baselines": {},
+  "qfi_trace_before_mean": 0.0,
+  "qfi_trace_before_std": 0.0,
+  "qfi_trace_after_mean": 0.0,
+  "qfi_trace_after_std": 0.0
 }
 ```
 
+O bloco `baselines` preserva os resultados comparativos por seed para as variantes `no_unlearning`, `shap_only`, `qfi_only` e `shap_qfi`. Isso é relevante porque um before/after isolado não sustenta uma conclusão causal forte sobre esquecimento.
+
+O bloco `ablation` separa as estatísticas por encoding, permitindo comparar `angle`, `iqp` e `reupload` sem misturar arquiteturas distintas.
+
+O baseline `retrain_complete` é o comparador mais importante para a avaliação do unlearning, porque representa o cenário ideal em que o cliente removido nunca participou do treino.
+
 ### Métricas de avaliação do unlearning
 
-O experimento `qfl_unlearning_qfi` agora calcula três métricas principais:
+O experimento `qfl_unlearning_qfi` calcula métricas antes/depois para auditar o esquecimento:
 
 #### 1. `forget_set_accuracy`
 
@@ -246,7 +306,7 @@ Interpretação desejada:
 
 - quanto menor, melhor;
 - idealmente deve se aproximar de uma taxa aleatória;
-- indica que a influência histórica do cliente foi reduzida de forma efetiva.
+- indica redução efetiva da influência histórica do cliente.
 
 #### 2. `retain_set_accuracy`
 
@@ -256,175 +316,39 @@ Interpretação desejada:
 
 - quanto maior, melhor;
 - deve permanecer estável após o unlearning;
-- evita `catastrophic forgetting` do conhecimento útil compartilhado.
+- evita perda catastrófica do conhecimento compartilhado.
 
 #### 3. `mia_success_rate`
 
-Mede a taxa de sucesso de um ataque de inferência de pertinência (`Membership Inference Attack`, MIA).
+Mede a taxa de sucesso de membership inference attack.
 
 Interpretação desejada:
 
-- quanto menor, melhor para privacidade;
-- valores altos indicam maior risco de vazamento sobre o cliente removido;
-- o projeto usa a biblioteca `Adversarial Robustness Toolbox (ART)` quando disponível.
+- quanto menor, melhor;
+- uma queda após o unlearning sugere redução da memorabilidade do cliente removido.
 
-Se `ART` não estiver instalado no ambiente, o projeto usa um proxy simples para manter o pipeline executável.
+#### 4. `shap_drop_mean`
 
-### Instalação opcional do ART
+Mede a queda média de atribuição SHAP nos parâmetros/blocos alvo.
 
-Para habilitar a integração com `ART`, instale o extra opcional:
+Interpretação desejada:
 
-```bash
-pip install -e ".[art]"
-```
+- quanto maior a queda nos blocos esquecidos, melhor;
+- funciona como evidência de apagamento localizado.
 
-Ou instale o pacote diretamente:
+## Estrutura e responsabilidades
 
-```bash
-pip install adversarial-robustness-toolbox
-```
+- `src/`: núcleo reutilizável do projeto.
+- `src/qfl/experiments/pipeline.py`: ponto único de orquestração para treino e unlearning.
+- `experiments/`: scripts de execução, configs e artefatos.
+- `experiments/*/outputs/logs/*.csv`: visão tabular dos runs por seed para análise externa.
+- `tests/`: validação automatizada.
 
-Quando `ART` estiver presente, o experimento executa um ataque `MembershipInferenceBlackBox` em cima de um adaptador
-`BlackBoxClassifier` construído a partir das probabilidades previstas pelo modelo quântico.
-Sem `ART`, o código continua executando com uma aproximação interna para não interromper o fluxo.
+## Como deixar mais enxuto ainda
 
-#### 4. `qfi_trace`
+Se quiser reduzir redundância mais um passo, os cortes naturais são:
 
-Valor derivado da Quantum Fisher Information do modelo após o re-treinamento sem o cliente removido.
-
-Interpretação:
-
-- serve como indicador da sensibilidade do estado quântico;
-- ajuda a comparar a magnitude da atualização antes e depois do unlearning.
-
-### Exemplo de saída expandida
-
-```json
-{
-  "qfi_trace": 0.0,
-  "remaining_clients": 4.0,
-  "excluded_client": "client_0",
-  "forget_set_accuracy": 0.25,
-  "retain_set_accuracy": 0.87,
-  "random_baseline_accuracy": 0.25,
-  "mia_success_rate": 0.50
-}
-```
-
-## Testes
-
-Há testes mínimos em:
-
-```text
-tests/test_federated.py
-```
-
-Execute com:
-
-```bash
-python3 -m pytest
-```
-
-Se o `pytest` ainda não estiver instalado:
-
-```bash
-pip install pytest
-```
-
-## Limitações atuais
-
-Esta é uma base funcional, mas ainda não é a versão final de pesquisa.
-
-Limitações atuais:
-
-- o treino quântico ainda usa uma aproximação simples;
-- o fluxo de unlearning com QFI está estruturado, mas ainda é um ponto de partida metodológico;
-- a integração com ART para MIA é efetiva quando a biblioteca está instalada, mas ainda mantém fallback quando a API do ambiente é incompatível.
-
-## Próximos passos recomendados
-
-1. Substituir a heurística de treino por otimização variacional real em `PennyLane`.
-2. Formalizar o pipeline de unlearning com QFI com métricas mais robustas.
-3. Adicionar CLI para execução parametrizada via YAML.
-4. Expandir a suíte de testes.
-
-## Resumo rápido
-
-Se você já tem o dataset preparado:
-
-```bash
-source .venv/bin/activate
-pip install -r requirements.txt
-python3 experiments/qfl_training/scripts/run_training.py
-python3 experiments/qfl_unlearning_qfi/scripts/run_unlearning.py
-```
-
-Os dados serão baixados de forma automática no primeiro uso.
-
-## Execução no Runpod
-
-Se você for rodar este projeto em uma máquina Runpod:
-
-1. Conecte por SSH usando sua chave privada.
-2. Envie o repositório para a máquina remota.
-3. Execute o bootstrap de dependências.
-4. Rode os experimentos.
-
-### Estrutura de suporte
-
-Os scripts e instruções específicas para Runpod estão em:
-
-- `runpod/README.md`
-- `runpod/setup_runpod.sh`
-- `runpod/run_all.sh`
-- `runpod/run_training_only.sh`
-- `runpod/run_unlearning_only.sh`
-
-### Fluxo resumido
-
-No Runpod:
-
-```bash
-cd /workspace/QfederatedUlearning
-bash runpod/setup_runpod.sh
-bash runpod/run_all.sh
-```
-
-## Checkpoints e progresso
-
-Cada experimento grava checkpoints em:
-
-- `experiments/qfl_training/outputs/checkpoints/`
-- `experiments/qfl_unlearning_qfi/outputs/checkpoints/`
-
-Arquivos gerados:
-
-- `training_start.json`
-- `round_1.json`, `round_2.json`, `round_3.json`
-- `training_complete.json`
-- `unlearning_start.json`
-- `unlearning_complete.json`
-
-Durante a execução, o terminal mostra uma barra ASCII de progresso para cada experimento.
-
-### Retomada automática
-
-Os experimentos salvam um estado resumido em:
-
-- `experiments/qfl_training/outputs/checkpoints/training_state.json`
-- `experiments/qfl_unlearning_qfi/outputs/checkpoints/unlearning_state.json`
-
-Se a execução for interrompida, o treinamento tenta continuar do último round salvo.
-O unlearning usa o último estado concluído salvo para evitar recomputação desnecessária.
-
-Os checkpoints incluem:
-
-- passo atual
-- total de passos
-- ETA estimada
-- timestamp UTC
-- métricas parciais ou resumo final
-
-### Observação
-
-Os dados do FEMNIST são mantidos em cache local após o primeiro download. Se você estiver rodando em ambientes sem internet ou com restrição de rede, certifique-se de realizar o download das partições previamente.
+1. migrar também os wrappers de `experiments/` para um único entrypoint genérico;
+2. extrair a montagem de dataset/cliente/servidor para uma única função pública;
+3. remover o wrapper legado de unlearning quando não houver dependência externa dele;
+4. adicionar `experiments/**/*.pyc` e saídas geradas ao `.gitignore` se ainda não estiverem cobertos.

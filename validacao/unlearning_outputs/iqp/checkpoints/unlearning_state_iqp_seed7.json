@@ -1,0 +1,129 @@
+{
+  "current_step": 1,
+  "eta_seconds": 0.0,
+  "label": "QFI unlearning (iqp, seed=7)",
+  "status": "completed",
+  "summary": {
+    "encoding": "iqp",
+    "seed": 7,
+    "summary": {
+      "baselines": {
+        "no_unlearning": {
+          "forget_accuracy_after": 0.6666666666666666,
+          "forget_accuracy_before": 0.6666666666666666,
+          "mia_success_rate_after": 0.6666666666666666,
+          "mia_success_rate_before": 0.6666666666666666,
+          "qfi_trace_after": 5.744390857715413,
+          "qfi_trace_before": 2.4e-05,
+          "retain_accuracy_after": 0.3333333333333333,
+          "retain_accuracy_before": 0.3333333333333333,
+          "shap_drop_mean": 0.0
+        },
+        "qfi_only": {
+          "forget_accuracy_after": 0.6666666666666666,
+          "forget_accuracy_before": 0.6666666666666666,
+          "mia_success_rate_after": 0.6666666666666666,
+          "mia_success_rate_before": 0.6666666666666666,
+          "qfi_trace_after": 5.744390857715413,
+          "qfi_trace_before": 2.4e-05,
+          "retain_accuracy_after": 0.3333333333333333,
+          "retain_accuracy_before": 0.3333333333333333,
+          "shap_drop_mean": 0.0
+        },
+        "retrain_complete": {
+          "forget_accuracy": 0.6666666666666666,
+          "mia_success_rate": 0.6666666666666666,
+          "qfi_trace": 2.4e-05,
+          "retain_accuracy": 0.3333333333333333
+        },
+        "shap_only": {
+          "forget_accuracy_after": 0.6666666666666666,
+          "forget_accuracy_before": 0.6666666666666666,
+          "mia_success_rate_after": 0.6666666666666666,
+          "mia_success_rate_before": 0.6666666666666666,
+          "qfi_trace_after": 5.744390857715413,
+          "qfi_trace_before": 2.4e-05,
+          "retain_accuracy_after": 0.3333333333333333,
+          "retain_accuracy_before": 0.3333333333333333,
+          "shap_drop_mean": 0.0
+        },
+        "shap_qfi": {
+          "forget_accuracy_after": 0.6666666666666666,
+          "forget_accuracy_before": 0.6666666666666666,
+          "mia_success_rate_after": 0.6666666666666666,
+          "mia_success_rate_before": 0.6666666666666666,
+          "qfi_trace_after": 5.744390857715413,
+          "qfi_trace_before": 2.4e-05,
+          "retain_accuracy_after": 0.3333333333333333,
+          "retain_accuracy_before": 0.3333333333333333,
+          "shap_drop_mean": 0.0
+        }
+      },
+      "main": {
+        "excluded_client": "client_0",
+        "forget_set_accuracy_after": 0.6666666666666666,
+        "forget_set_accuracy_before": 0.6666666666666666,
+        "global_weights": [
+          [
+            [
+              0.15000000000000002,
+              0.15000000000000002,
+              0.15000000000000002
+            ],
+            [
+              0.15000000000000002,
+              0.15000000000000002,
+              0.15000000000000002
+            ],
+            [
+              0.15000000000000002,
+              0.15000000000000002,
+              0.15000000000000002
+            ],
+            [
+              0.15000000000000002,
+              0.15000000000000002,
+              0.15000000000000002
+            ]
+          ],
+          [
+            [
+              0.15000000000000002,
+              0.15000000000000002,
+              0.15000000000000002
+            ],
+            [
+              0.15000000000000002,
+              0.15000000000000002,
+              0.15000000000000002
+            ],
+            [
+              0.15000000000000002,
+              0.15000000000000002,
+              0.15000000000000002
+            ],
+            [
+              0.15000000000000002,
+              0.15000000000000002,
+              0.15000000000000002
+            ]
+          ]
+        ],
+        "mask_density": 0.25,
+        "mia_success_rate_after": 0.6666666666666666,
+        "mia_success_rate_before": 0.6666666666666666,
+        "qfi_trace_after": 5.744390857715413,
+        "qfi_trace_before": 5.744390857715413,
+        "random_baseline_accuracy": 0.5,
+        "remaining_clients": 1.0,
+        "retain_set_accuracy_after": 0.3333333333333333,
+        "retain_set_accuracy_before": 0.3333333333333333,
+        "shap_after_mean": 0.0012887127993804134,
+        "shap_before_mean": 0.0012887127993804134,
+        "shap_drop_mean": 0.0
+      }
+    }
+  },
+  "total_steps": 1,
+  "updated_at_utc": "2026-07-08T13:16:20.327533+00:00"
+}

@@ -6,5 +6,6 @@ pennylane>=0.37
 pennylane-lightning>=0.37
 matplotlib>=3.8
 pyyaml>=6.0
+tqdm>=4.66
 adversarial-robustness-toolbox>=1.17
 flwr-datasets[vision]

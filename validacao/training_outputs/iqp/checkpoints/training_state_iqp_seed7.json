@@ -1,0 +1,20 @@
+{
+  "current_step": 1,
+  "eta_seconds": 0.0,
+  "label": "QFL training (iqp, seed=7)",
+  "status": "completed",
+  "summary": {
+    "encoding": "iqp",
+    "metrics": {
+      "num_clients": 2.0
+    },
+    "rounds": [
+      {
+        "num_clients": 2.0
+      }
+    ],
+    "seed": 7
+  },
+  "total_steps": 1,
+  "updated_at_utc": "2026-07-08T13:15:38.618615+00:00"
+}

@@ -1,0 +1,16 @@
+{
+  "runs": [
+    {
+      "encoding": "reupload",
+      "metrics": {
+        "num_clients": 2.0
+      },
+      "rounds": [
+        {
+          "num_clients": 2.0
+        }
+      ],
+      "seed": 7
+    }
+  ]
+}

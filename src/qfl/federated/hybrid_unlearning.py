@@ -78,6 +78,8 @@ class HybridSHAPQFIUnlearner:
         lr: float = 0.05,
         damping: float = 1e-6,
     ) -> np.ndarray:
+        if len(x_forget) == 0 or len(y_forget) == 0:
+            return self._flatten()
         base_weights = self._flatten()
 
         def loss_fn(flat_weights):
@@ -85,6 +87,8 @@ class HybridSHAPQFIUnlearner:
             return self.model.loss(x_forget, y_forget)
 
         grad = np.asarray(qml.grad(loss_fn)(base_weights))
+        if grad.size == 0:
+            return base_weights
         qfi_inputs = x_forget if len(x_forget) else np.zeros((1, self.model.num_wires), dtype=float)
         qfi = np.asarray(self.model.qfi_matrix(qfi_inputs))
         qfi = qfi + damping * np.eye(qfi.shape[0])
@@ -103,6 +107,7 @@ class HybridSHAPQFIUnlearner:
         num_shap_permutations: int = 8,
         mask_quantile: float = 0.75,
         lr: float = 0.05,
+        mode: str = "shap_qfi",
     ) -> tuple[UnlearningReport, dict[str, np.ndarray]]:
         qfi_trace_before = self.model.qfi_trace(x_forget if len(x_forget) else x_retain[:1])
         forget_accuracy_before = evaluate_accuracy(self.model, x_forget, y_forget)
@@ -112,7 +117,19 @@ class HybridSHAPQFIUnlearner:
         shap_before = self.shap_attribution(x_forget, y_forget, num_permutations=num_shap_permutations)
         mask = self.shap_mask(shap_before, threshold_quantile=mask_quantile)
 
-        self.qfi_step(x_forget, y_forget, mask, lr=lr)
+        if len(x_forget) == 0 or len(y_forget) == 0:
+            mode = "no_unlearning"
+
+        if mode == "no_unlearning":
+            pass
+        elif mode == "qfi_only":
+            self.qfi_step(x_forget, y_forget, np.ones_like(mask), lr=lr)
+        elif mode == "shap_only":
+            self._masked_gradient_step(x_forget, y_forget, mask, lr=lr)
+        elif mode == "shap_qfi":
+            self.qfi_step(x_forget, y_forget, mask, lr=lr)
+        else:
+            raise ValueError(f"Unknown unlearning mode: {mode}")
 
         qfi_trace_after = self.model.qfi_trace(x_forget if len(x_forget) else x_retain[:1])
         forget_accuracy_after = evaluate_accuracy(self.model, x_forget, y_forget)
@@ -133,3 +150,17 @@ class HybridSHAPQFIUnlearner:
             shap_drop_mean=float(np.mean(shap_before - shap_after)) if shap_before.size else 0.0,
         )
         return report, {"shap_before": shap_before, "shap_after": shap_after, "mask": mask}
+
+    def _masked_gradient_step(self, x_forget: np.ndarray, y_forget: np.ndarray, shap_mask: np.ndarray, lr: float = 0.05) -> np.ndarray:
+        base_weights = self._flatten()
+
+        def loss_fn(flat_weights):
+            self._assign_weights(np.asarray(flat_weights))
+            return self.model.loss(x_forget, y_forget)
+
+        grad = np.asarray(qml.grad(loss_fn)(base_weights))
+        if grad.size == 0:
+            return base_weights
+        new_weights = base_weights - lr * (grad * shap_mask)
+        self._assign_weights(new_weights)
+        return new_weights

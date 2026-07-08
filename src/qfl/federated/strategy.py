@@ -16,9 +16,9 @@ class FederatedTrainingRun:
     server: FederatedServer
     clients: list[FederatedClient]
 
-    def run(self, num_rounds: int = 1) -> list[FederatedResult]:
+    def run(self, num_rounds: int = 1, initial_weights: np.ndarray | None = None) -> list[FederatedResult]:
         from tqdm import tqdm
-        current_weights = self.server.initial_weights
+        current_weights = self.server.initial_weights if initial_weights is None else initial_weights
         results: list[FederatedResult] = []
         rounds_iter = tqdm(range(num_rounds), desc="Rodadas Federadas", leave=False) if num_rounds > 1 else range(num_rounds)
         for round_index in rounds_iter:
@@ -27,5 +27,4 @@ class FederatedTrainingRun:
             current_weights = np.asarray(result.global_weights)
             results.append(result)
         return results
-
 

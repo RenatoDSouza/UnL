@@ -17,9 +17,17 @@ class FederatedClient:
     client_id: str
     x_train: np.ndarray
     y_train: np.ndarray
+    prefer_gpu: bool = True
+    encoding: str = "angle"
+    data_reuploads: int = 1
 
     def train(self, global_weights, epochs: int = 1, lr: float = 0.05) -> ClientUpdate:
-        model = QuantumClassifier(num_wires=self.x_train.shape[1], prefer_gpu=True)
+        model = QuantumClassifier(
+            num_wires=self.x_train.shape[1],
+            prefer_gpu=self.prefer_gpu,
+            encoding=self.encoding,
+            data_reuploads=self.data_reuploads,
+        )
         model.weights = pnp.array(global_weights, requires_grad=True)
         for epoch in range(epochs):
             for sample, target in tqdm(
@@ -36,4 +44,3 @@ class FederatedClient:
             weights=model.weights.tolist(),
             metadata={"loss_proxy": float(np.mean(model.predict_proba(self.x_train)[:, 1]))},
         )
-

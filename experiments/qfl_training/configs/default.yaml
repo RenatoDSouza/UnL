@@ -2,5 +2,7 @@ dataset_path: data/femnist_sample.npz
 num_clients: 5
 num_rounds: 3
 seed: 42
+seeds: [42, 43, 44]
+encoding_modes: [angle, iqp, reupload]
+data_reuploads: 2
 prefer_gpu: true
-

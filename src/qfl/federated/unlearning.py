@@ -16,6 +16,9 @@ from qfl.quantum.model import QuantumClassifier
 class QFIUnlearningRun:
     training_run: FederatedTrainingRun
     excluded_client_id: str
+    prefer_gpu: bool = True
+    encoding: str = "angle"
+    data_reuploads: int = 1
 
     def run(self, num_rounds: int = 1) -> dict[str, float | dict[str, float]]:
         active_clients = [client for client in self.training_run.clients if client.client_id != self.excluded_client_id]
@@ -24,7 +27,12 @@ class QFIUnlearningRun:
             raise ValueError("At least one active client is required")
 
         base_results = FederatedTrainingRun(self.training_run.server, active_clients).run(num_rounds=num_rounds)
-        model = QuantumClassifier(num_wires=active_clients[0].x_train.shape[1], prefer_gpu=True)
+        model = QuantumClassifier(
+            num_wires=active_clients[0].x_train.shape[1],
+            prefer_gpu=self.prefer_gpu,
+            encoding=self.encoding,
+            data_reuploads=self.data_reuploads,
+        )
         model.weights = pnp.array(base_results[-1].global_weights, requires_grad=True).reshape(model.weights.shape)
 
         forget_x = excluded_clients[0].x_train if excluded_clients else np.empty((0, active_clients[0].x_train.shape[1]))
@@ -32,8 +40,9 @@ class QFIUnlearningRun:
         retain_x = np.concatenate([client.x_train for client in active_clients], axis=0)
         retain_y = np.concatenate([client.y_train for client in active_clients], axis=0)
 
-        report, artifacts = HybridSHAPQFIUnlearner(model).run(forget_x, forget_y, retain_x, retain_y)
+        report, artifacts = HybridSHAPQFIUnlearner(model).run(forget_x, forget_y, retain_x, retain_y, mode="shap_qfi")
         return {
+            "global_weights": np.asarray(base_results[-1].global_weights, dtype=float).tolist(),
             "qfi_trace_before": report.qfi_trace_before,
             "qfi_trace_after": report.qfi_trace_after,
             "forget_set_accuracy_before": report.forget_accuracy_before,

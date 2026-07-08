@@ -1,0 +1,67 @@
+{
+  "ablation": {
+    "iqp": {
+      "num_clients_ci95_high": 2.0,
+      "num_clients_ci95_low": 2.0,
+      "num_clients_max": 2.0,
+      "num_clients_mean": 2.0,
+      "num_clients_median": 2.0,
+      "num_clients_min": 2.0,
+      "num_clients_std": 0.0,
+      "num_runs": 1,
+      "runs": [
+        {
+          "encoding": "iqp",
+          "metrics": {
+            "num_clients": 2.0
+          },
+          "rounds": [
+            {
+              "num_clients": 2.0
+            }
+          ],
+          "seed": 7
+        }
+      ]
+    }
+  },
+  "metadata": {
+    "data_reuploads": 2,
+    "dataset_path": "validacao/synthetic_validation.npz",
+    "encoding_modes": [
+      "iqp"
+    ],
+    "num_clients": 2,
+    "num_rounds": 1,
+    "platform": "Linux-6.6.87.2-microsoft-standard-WSL2-x86_64-with-glibc2.35",
+    "prefer_gpu": false,
+    "processor": "x86_64",
+    "python_version": "3.10.12",
+    "seed": 7,
+    "seeds": [
+      7
+    ]
+  },
+  "num_clients_ci95_high": 2.0,
+  "num_clients_ci95_low": 2.0,
+  "num_clients_max": 2.0,
+  "num_clients_mean": 2.0,
+  "num_clients_median": 2.0,
+  "num_clients_min": 2.0,
+  "num_clients_std": 0.0,
+  "num_runs": 1,
+  "runs": [
+    {
+      "encoding": "iqp",
+      "metrics": {
+        "num_clients": 2.0
+      },
+      "rounds": [
+        {
+          "num_clients": 2.0
+        }
+      ],
+      "seed": 7
+    }
+  ]
+}

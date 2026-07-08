@@ -1,0 +1,15 @@
+seed,encoding,scope,name,value
+7,iqp,main,qfi_trace_before,5.744390857715413
+7,iqp,main,qfi_trace_after,5.744390857715413
+7,iqp,main,forget_set_accuracy_before,0.6666666666666666
+7,iqp,main,forget_set_accuracy_after,0.6666666666666666
+7,iqp,main,retain_set_accuracy_before,0.3333333333333333
+7,iqp,main,retain_set_accuracy_after,0.3333333333333333
+7,iqp,main,random_baseline_accuracy,0.5
+7,iqp,main,mia_success_rate_before,0.6666666666666666
+7,iqp,main,mia_success_rate_after,0.6666666666666666
+7,iqp,main,shap_drop_mean,0.0
+7,iqp,main,remaining_clients,1.0
+7,iqp,main,shap_before_mean,0.0012887127993804134
+7,iqp,main,shap_after_mean,0.0012887127993804134
+7,iqp,main,mask_density,0.25
