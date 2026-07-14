@@ -1,9 +1,28 @@
+# Federated quantum unlearning experiment (SHAP + QFI).
+# See src/qfl/experiments/pipeline.py for the semantics of each field.
 dataset_path: null
 num_clients: 5
-num_rounds: 3
+num_rounds: 5
 excluded_client_id: client_0
 seed: 42
 seeds: [42, 43, 44]
 encoding_modes: [angle, iqp, reupload]
 data_reuploads: 2
-prefer_gpu: true
+prefer_gpu: false
+
+# Representation / model capacity
+feature_mode: pca        # "pca" (n_features) or "quadrants" (4 features)
+n_features: 8
+num_layers: 2
+train_epochs: 8
+train_lr: 0.2
+
+# Unlearning method (SHAP attribution + QFI-preconditioned ascent)
+shap_permutations: 16    # Monte-Carlo samples for Shapley values
+unlearn_lr: 0.4
+unlearn_max_steps: 12    # ascent stops early at the uninformed accuracy
+mask_quantile: 0.5       # keep the top-attributed parameter blocks
+
+# Runtime bound: cap samples/client (null = use all ~380). The 8-qubit QFI
+# metric tensor is costly at full size; a cap keeps a full 3x3 grid tractable.
+max_samples_per_client: 120

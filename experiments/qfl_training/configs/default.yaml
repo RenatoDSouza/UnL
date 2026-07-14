@@ -1,8 +1,16 @@
+# Federated quantum training experiment.
 dataset_path: null
 num_clients: 5
-num_rounds: 3
+num_rounds: 5
 seed: 42
 seeds: [42, 43, 44]
 encoding_modes: [angle, iqp, reupload]
 data_reuploads: 2
-prefer_gpu: true
+prefer_gpu: false
+
+feature_mode: pca
+n_features: 8
+num_layers: 2
+train_epochs: 8
+train_lr: 0.2
+max_samples_per_client: 120

@@ -15,7 +15,11 @@ import numpy as np
 import yaml
 
 from qfl.data.femnist import (
+    FEMNISTSplit,
     compress_to_quadrants,
+    load_femnist_backdoor_partitions,
+    load_femnist_binary_partitions,
+    load_femnist_noniid_partitions,
     load_femnist_partitions,
     load_femnist_source,
     normalize_images,
@@ -23,7 +27,7 @@ from qfl.data.femnist import (
 )
 from qfl.federated.client import FederatedClient
 from qfl.federated.metrics import evaluate_accuracy
-from qfl.federated.mia import membership_inference_success_rate
+from qfl.federated.mia import membership_inference_auc
 from qfl.federated.server import FederatedServer
 from qfl.federated.strategy import FederatedTrainingRun
 from qfl.federated.hybrid_unlearning import HybridSHAPQFIUnlearner
@@ -47,6 +51,12 @@ class TrainingExperimentConfig:
     encoding_modes: list[str] | None = None
     data_reuploads: int = 1
     prefer_gpu: bool = True
+    max_samples_per_client: int | None = None
+    feature_mode: str = "quadrants"
+    n_features: int = 8
+    num_layers: int = 2
+    train_epochs: int = 6
+    train_lr: float = 0.2
     output_dir: str = "experiments/qfl_training/outputs"
 
 
@@ -61,6 +71,16 @@ class UnlearningExperimentConfig:
     encoding_modes: list[str] | None = None
     data_reuploads: int = 1
     prefer_gpu: bool = True
+    max_samples_per_client: int | None = None
+    feature_mode: str = "quadrants"
+    n_features: int = 8
+    num_layers: int = 2
+    train_epochs: int = 6
+    train_lr: float = 0.2
+    shap_permutations: int = 16
+    unlearn_lr: float = 0.4
+    unlearn_max_steps: int = 12
+    mask_quantile: float = 0.5
     output_dir: str = "experiments/qfl_unlearning_qfi/outputs"
 
 
@@ -188,6 +208,12 @@ def load_training_config(payload: dict[str, Any]) -> TrainingExperimentConfig:
             encoding_modes=[str(mode) for mode in payload.get("encoding_modes", [])] or None,
             data_reuploads=int(payload.get("data_reuploads", 1)),
             prefer_gpu=bool(payload.get("prefer_gpu", True)),
+            max_samples_per_client=payload.get("max_samples_per_client"),
+            feature_mode=str(payload.get("feature_mode", "quadrants")),
+            n_features=int(payload.get("n_features", 8)),
+            num_layers=int(payload.get("num_layers", 2)),
+            train_epochs=int(payload.get("train_epochs", 6)),
+            train_lr=float(payload.get("train_lr", 0.2)),
             output_dir=str(payload.get("output_dir", "experiments/qfl_training/outputs")),
         )
     )
@@ -205,12 +231,28 @@ def load_unlearning_config(payload: dict[str, Any]) -> UnlearningExperimentConfi
             encoding_modes=[str(mode) for mode in payload.get("encoding_modes", [])] or None,
             data_reuploads=int(payload.get("data_reuploads", 1)),
             prefer_gpu=bool(payload.get("prefer_gpu", True)),
+            max_samples_per_client=payload.get("max_samples_per_client"),
+            feature_mode=str(payload.get("feature_mode", "quadrants")),
+            n_features=int(payload.get("n_features", 8)),
+            num_layers=int(payload.get("num_layers", 2)),
+            train_epochs=int(payload.get("train_epochs", 6)),
+            train_lr=float(payload.get("train_lr", 0.2)),
+            shap_permutations=int(payload.get("shap_permutations", 16)),
+            unlearn_lr=float(payload.get("unlearn_lr", 0.4)),
+            unlearn_max_steps=int(payload.get("unlearn_max_steps", 12)),
+            mask_quantile=float(payload.get("mask_quantile", 0.5)),
             output_dir=str(payload.get("output_dir", "experiments/qfl_unlearning_qfi/outputs")),
         )
     )
 
-def _build_clients(num_clients: int, dataset_path: str | None = None, prefer_gpu: bool = True, encoding: str = "angle", data_reuploads: int = 1):
-    if dataset_path:
+def _build_clients(num_clients: int, dataset_path: str | None = None, prefer_gpu: bool = True, encoding: str = "angle", data_reuploads: int = 1, max_samples_per_client: int | None = None, feature_mode: str = "quadrants", n_features: int = 8, train_epochs: int = 6, train_lr: float = 0.2, num_layers: int = 2, seed: int = 0):
+    if feature_mode == "binary":
+        client_splits = load_femnist_binary_partitions(num_clients=num_clients, n_features=n_features, seed=seed)
+    elif feature_mode == "noniid":
+        client_splits = load_femnist_noniid_partitions(num_clients=num_clients, n_features=n_features, seed=seed)
+    elif feature_mode == "backdoor":
+        client_splits = load_femnist_backdoor_partitions(num_clients=num_clients, n_features=n_features, seed=seed, per_client=max_samples_per_client or 120)
+    elif dataset_path:
         dataset_file = Path(dataset_path)
         if dataset_file.exists():
             x, y = load_femnist_source(dataset_file)
@@ -222,9 +264,14 @@ def _build_clients(num_clients: int, dataset_path: str | None = None, prefer_gpu
                 x = compress_to_quadrants(normalize_images(x))
             client_splits = partition_by_client(x, y, num_clients=num_clients)
         else:
-            client_splits = load_femnist_partitions(num_clients=num_clients)
+            client_splits = load_femnist_partitions(num_clients=num_clients, feature_mode=feature_mode, n_features=n_features, seed=seed)
     else:
-        client_splits = load_femnist_partitions(num_clients=num_clients)
+        client_splits = load_femnist_partitions(num_clients=num_clients, feature_mode=feature_mode, n_features=n_features, seed=seed)
+    if max_samples_per_client:
+        client_splits = [
+            FEMNISTSplit(split.client_id, split.x[:max_samples_per_client], split.y[:max_samples_per_client], split.x_eval, split.y_eval)
+            for split in client_splits
+        ]
     clients = [
         FederatedClient(
             split.client_id,
@@ -233,18 +280,23 @@ def _build_clients(num_clients: int, dataset_path: str | None = None, prefer_gpu
             prefer_gpu=prefer_gpu,
             encoding=encoding,
             data_reuploads=data_reuploads,
+            num_layers=num_layers,
+            epochs=train_epochs,
+            lr=train_lr,
+            x_eval=split.x_eval,
+            y_eval=split.y_eval,
         )
         for split in client_splits
     ]
-    initial_weights = np.zeros((2, client_splits[0].x.shape[1], 3), dtype=float)
+    initial_weights = 0.1 * np.random.randn(num_layers, client_splits[0].x.shape[1], 3)
     server = FederatedServer(initial_weights=initial_weights)
     return client_splits, clients, server
 
 
-def _build_model_from_weights(num_wires: int, weights: np.ndarray, prefer_gpu: bool, encoding: str, data_reuploads: int):
+def _build_model_from_weights(num_wires: int, weights: np.ndarray, prefer_gpu: bool, encoding: str, data_reuploads: int, num_layers: int = 2):
     from qfl.quantum.model import QuantumClassifier
 
-    model = QuantumClassifier(num_wires=num_wires, prefer_gpu=prefer_gpu, encoding=encoding, data_reuploads=data_reuploads)
+    model = QuantumClassifier(num_wires=num_wires, num_layers=num_layers, prefer_gpu=prefer_gpu, encoding=encoding, data_reuploads=data_reuploads)
     model.weights = np.asarray(weights, dtype=float).reshape(model.weights.shape)
     return model
 
@@ -265,7 +317,7 @@ def run_training_experiment(config: TrainingExperimentConfig, checkpoint_name: s
                 config.num_clients,
                 config.num_rounds,
             )
-            _, clients, server = _build_clients(config.num_clients, config.dataset_path, config.prefer_gpu, encoding, config.data_reuploads)
+            _, clients, server = _build_clients(config.num_clients, config.dataset_path, config.prefer_gpu, encoding, config.data_reuploads, config.max_samples_per_client, config.feature_mode, config.n_features, config.train_epochs, config.train_lr, config.num_layers, seed)
             run = FederatedTrainingRun(server=server, clients=clients)
             progress = ProgressTracker(label=f"QFL training ({encoding}, seed={seed})", total_steps=config.num_rounds)
             seed_checkpoint_path = checkpoint_dir / f"{Path(checkpoint_name).stem}_{encoding}_seed{seed}.json"
@@ -319,7 +371,7 @@ def run_unlearning_experiment(config: UnlearningExperimentConfig, checkpoint_nam
                 config.num_rounds,
                 config.excluded_client_id,
             )
-            _, clients, server = _build_clients(config.num_clients, config.dataset_path, config.prefer_gpu, encoding, config.data_reuploads)
+            _, clients, server = _build_clients(config.num_clients, config.dataset_path, config.prefer_gpu, encoding, config.data_reuploads, config.max_samples_per_client, config.feature_mode, config.n_features, config.train_epochs, config.train_lr, config.num_layers, seed)
             training_run = FederatedTrainingRun(server=server, clients=clients)
             unlearning_run = QFIUnlearningRun(
                 training_run=training_run,
@@ -338,19 +390,22 @@ def run_unlearning_experiment(config: UnlearningExperimentConfig, checkpoint_nam
                 config.prefer_gpu,
                 encoding,
                 config.data_reuploads,
+                config.num_layers,
             )
-            active_clients, forget_x, forget_y, retain_x, retain_y = _split_clients(clients, config.excluded_client_id)
+            split = _split_clients(clients, config.excluded_client_id)
             baselines = _run_unlearning_baselines(
                 model,
-                active_clients,
-                forget_x,
-                forget_y,
-                retain_x,
-                retain_y,
+                split,
                 config.num_rounds,
                 config.prefer_gpu,
                 encoding,
                 config.data_reuploads,
+                config.num_layers,
+                shap_permutations=config.shap_permutations,
+                unlearn_lr=config.unlearn_lr,
+                unlearn_max_steps=config.unlearn_max_steps,
+                mask_quantile=config.mask_quantile,
+                seed=seed,
             )
             seed_result = {"main": base_result, "baselines": baselines}
             LOGGER.info("unlearning seed=%s encoding=%s result_keys=%s", seed, encoding, sorted(seed_result.keys()))
@@ -366,6 +421,7 @@ def run_unlearning_experiment(config: UnlearningExperimentConfig, checkpoint_nam
         "ablation": _aggregate_runs_by_encoding(runs),
         "baselines": baselines_summary(runs),
         "baselines_table": baselines_table(runs),
+        "baselines_aggregated": aggregate_baselines(runs),
         **_aggregate_runs(runs),
     }
     write_json(output_dir / "unlearning_summary.json", summary)
@@ -374,53 +430,81 @@ def run_unlearning_experiment(config: UnlearningExperimentConfig, checkpoint_nam
     return summary
 
 
-def _split_clients(clients: list[FederatedClient], excluded_client_id: str):
-    excluded_clients = [client for client in clients if client.client_id == excluded_client_id]
-    active_clients = [client for client in clients if client.client_id != excluded_client_id]
-    if not active_clients:
+@dataclass(frozen=True)
+class _ClientSplit:
+    active_clients: list[FederatedClient]
+    forget_x: np.ndarray
+    forget_y: np.ndarray
+    forget_x_eval: np.ndarray
+    forget_y_eval: np.ndarray
+    retain_x: np.ndarray
+    retain_y: np.ndarray
+
+
+def _split_clients(clients: list[FederatedClient], excluded_client_id: str) -> _ClientSplit:
+    excluded = [c for c in clients if c.client_id == excluded_client_id]
+    active = [c for c in clients if c.client_id != excluded_client_id]
+    if not active:
         raise ValueError("At least one active client is required")
-    forget_x = excluded_clients[0].x_train if excluded_clients else np.empty((0, active_clients[0].x_train.shape[1]))
-    forget_y = excluded_clients[0].y_train if excluded_clients else np.empty((0,))
-    retain_x = np.concatenate([client.x_train for client in active_clients], axis=0)
-    retain_y = np.concatenate([client.y_train for client in active_clients], axis=0)
-    return active_clients, forget_x, forget_y, retain_x, retain_y
+    n_features = active[0].x_train.shape[1]
+    return _ClientSplit(
+        active_clients=active,
+        forget_x=excluded[0].x_train if excluded else np.empty((0, n_features)),
+        forget_y=excluded[0].y_train if excluded else np.empty((0,)),
+        forget_x_eval=excluded[0].x_eval if excluded and excluded[0].x_eval is not None else np.empty((0, n_features)),
+        forget_y_eval=excluded[0].y_eval if excluded and excluded[0].y_eval is not None else np.empty((0,)),
+        retain_x=np.concatenate([c.x_train for c in active], axis=0),
+        retain_y=np.concatenate([c.y_train for c in active], axis=0),
+    )
 
 
 def _run_unlearning_baselines(
     model,
-    active_clients: list[FederatedClient],
-    forget_x,
-    forget_y,
-    retain_x,
-    retain_y,
+    split: _ClientSplit,
     num_rounds: int,
     prefer_gpu: bool,
     encoding: str,
     data_reuploads: int,
+    num_layers: int,
+    shap_permutations: int = 16,
+    unlearn_lr: float = 0.4,
+    unlearn_max_steps: int = 12,
+    mask_quantile: float = 0.5,
+    seed: int = 0,
 ):
     from copy import deepcopy
 
     baselines: dict[str, Any] = {}
     for mode in ("no_unlearning", "shap_only", "qfi_only", "shap_qfi"):
         baseline_model = deepcopy(model)
-        report, _ = HybridSHAPQFIUnlearner(baseline_model).run(forget_x, forget_y, retain_x, retain_y, mode=mode)
+        report, _ = HybridSHAPQFIUnlearner(baseline_model).run(
+            split.forget_x, split.forget_y, split.retain_x, split.retain_y,
+            x_forget_eval=split.forget_x_eval, y_forget_eval=split.forget_y_eval,
+            num_shap_permutations=shap_permutations, mask_quantile=mask_quantile,
+            lr=unlearn_lr, max_steps=unlearn_max_steps, mode=mode, seed=seed,
+        )
         baselines[mode] = {
             "forget_accuracy_before": report.forget_accuracy_before,
             "forget_accuracy_after": report.forget_accuracy_after,
+            "forget_loss_before": report.forget_loss_before,
+            "forget_loss_after": report.forget_loss_after,
             "retain_accuracy_before": report.retain_accuracy_before,
             "retain_accuracy_after": report.retain_accuracy_after,
-            "mia_success_rate_before": report.mia_success_rate_before,
-            "mia_success_rate_after": report.mia_success_rate_after,
+            "retain_loss_before": report.retain_loss_before,
+            "retain_loss_after": report.retain_loss_after,
+            "mia_auc_before": report.mia_auc_before,
+            "mia_auc_after": report.mia_auc_after,
             "qfi_trace_before": report.qfi_trace_before,
             "qfi_trace_after": report.qfi_trace_after,
+            "unlearning_steps": float(report.unlearning_steps),
             "shap_drop_mean": report.shap_drop_mean,
         }
-    retrained_model = _retrain_without_excluded(active_clients, num_rounds, prefer_gpu, encoding, data_reuploads)
+    retrained_model = _retrain_without_excluded(split.active_clients, num_rounds, prefer_gpu, encoding, data_reuploads, num_layers)
     baselines["retrain_complete"] = {
-        "forget_accuracy": evaluate_accuracy(retrained_model, forget_x, forget_y),
-        "retain_accuracy": evaluate_accuracy(retrained_model, retain_x, retain_y),
-        "mia_success_rate": membership_inference_success_rate(retrained_model, forget_x, forget_y, retain_x, retain_y),
-        "qfi_trace": retrained_model.qfi_trace(retain_x[: min(4, len(retain_x))]) if len(retain_x) else 0.0,
+        "forget_accuracy": evaluate_accuracy(retrained_model, split.forget_x, split.forget_y),
+        "retain_accuracy": evaluate_accuracy(retrained_model, split.retain_x, split.retain_y),
+        "mia_auc": membership_inference_auc(retrained_model, split.forget_x, split.forget_y, split.forget_x_eval, split.forget_y_eval),
+        "qfi_trace": retrained_model.qfi_trace(split.forget_x[: min(8, len(split.forget_x))]) if len(split.forget_x) else 0.0,
     }
     return baselines
 
@@ -431,10 +515,11 @@ def _retrain_without_excluded(
     prefer_gpu: bool,
     encoding: str,
     data_reuploads: int,
+    num_layers: int,
 ):
     from qfl.quantum.model import QuantumClassifier
 
-    server = FederatedServer(initial_weights=np.zeros((2, active_clients[0].x_train.shape[1], 3), dtype=float))
+    server = FederatedServer(initial_weights=0.1 * np.random.randn(num_layers, active_clients[0].x_train.shape[1], 3))
     for client in active_clients:
         client.prefer_gpu = prefer_gpu
         client.encoding = encoding
@@ -443,6 +528,7 @@ def _retrain_without_excluded(
     partial = run.run(num_rounds=num_rounds)
     model = QuantumClassifier(
         num_wires=active_clients[0].x_train.shape[1],
+        num_layers=num_layers,
         prefer_gpu=prefer_gpu,
         encoding=encoding,
         data_reuploads=data_reuploads,
@@ -473,3 +559,30 @@ def baselines_table(runs: list[dict[str, Any]]) -> list[dict[str, Any]]:
                     row[key] = float(value)
             rows.append(row)
     return rows
+
+
+def aggregate_baselines(runs: list[dict[str, Any]]) -> dict[str, Any]:
+    """Mean +/- std of every baseline metric across seeds, per (encoding, mode).
+
+    This is the paper-facing comparison table: for each encoding and each
+    unlearning variant it summarises the metrics over the repeated seeds.
+    """
+    grouped: dict[str, dict[str, list[dict[str, float]]]] = {}
+    for row in baselines_table(runs):
+        enc = str(row.get("encoding", "unknown"))
+        mode = str(row.get("mode", "unknown"))
+        metrics = {k: v for k, v in row.items() if k not in ("seed", "encoding", "mode")}
+        grouped.setdefault(enc, {}).setdefault(mode, []).append(metrics)
+
+    aggregated: dict[str, Any] = {}
+    for enc, modes in grouped.items():
+        aggregated[enc] = {}
+        for mode, metric_dicts in modes.items():
+            keys = sorted({k for d in metric_dicts for k in d})
+            stats: dict[str, float] = {"num_seeds": float(len(metric_dicts))}
+            for key in keys:
+                values = [d[key] for d in metric_dicts if key in d]
+                stats[f"{key}_mean"] = mean(values)
+                stats[f"{key}_std"] = pstdev(values) if len(values) > 1 else 0.0
+            aggregated[enc][mode] = stats
+    return aggregated

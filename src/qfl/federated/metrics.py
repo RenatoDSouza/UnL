@@ -30,6 +30,20 @@ def random_baseline_accuracy(y: np.ndarray) -> float:
     return 1.0 / max(1, len(classes))
 
 
+def majority_class_rate(y: np.ndarray) -> float:
+    """Accuracy of an uninformed constant predictor (the majority class).
+
+    This is the level a model that never saw the data would reach, and the
+    target for unlearning: forget accuracy should fall back to it rather than
+    overshoot below chance.
+    """
+    if len(y) == 0:
+        return 0.5
+    y = y.astype(int)
+    p = float(np.mean(y))
+    return max(p, 1.0 - p)
+
+
 @dataclass(frozen=True)
 class UnlearningMetrics:
     forget_accuracy: float

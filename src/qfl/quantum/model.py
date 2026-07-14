@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
+import logging
+
 import pennylane as qml
 from pennylane import numpy as pnp
 
 from qfl.quantum.device import create_device
+
+LOGGER = logging.getLogger(__name__)
 
 
 class QuantumClassifier:
@@ -60,12 +64,18 @@ class QuantumClassifier:
 
     def qfi_matrix(self, inputs, regularization: float = 1e-6):
         n = self.weights.size
+        # ``qml.metric_tensor`` differentiates w.r.t. the weights, so they must be
+        # flagged as trainable. Models rebuilt from aggregated weights store a
+        # plain array; without this the metric tensor raised and the result was
+        # silently replaced by ``regularization * I`` (a bogus ~0 QFI trace).
+        weights = pnp.array(self.weights, requires_grad=True)
         try:
             metric_tensor = qml.metric_tensor(self._qnode, approx="block-diag")
-            tensors = [metric_tensor(sample, self.weights) for sample in inputs]
+            tensors = [metric_tensor(pnp.array(sample, requires_grad=False), weights) for sample in inputs]
             qfi = sum(pnp.asarray(tensor).reshape(n, n) for tensor in tensors) / max(1, len(tensors))
             return qfi + regularization * pnp.eye(n)
         except Exception:
+            LOGGER.warning("metric_tensor failed; returning regularised identity", exc_info=True)
             return regularization * pnp.eye(n)
 
     def qfi_trace(self, inputs):

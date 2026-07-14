@@ -18,6 +18,10 @@ O repositório foi reorganizado para separar responsabilidades:
 - `experiments/` contém apenas wrappers de execução, configs, logs e outputs.
 - `tests/` contém validação automatizada do comportamento do núcleo.
 
+Um levantamento detalhado das mudanças locais mais recentes em relação à
+`origin/main`, incluindo decisões sobre datasets e publicação, está em
+[`docs/CHANGES_FROM_E97D0CE.md`](docs/CHANGES_FROM_E97D0CE.md).
+
 ## Estrutura do projeto
 
 ```text
@@ -318,14 +322,18 @@ Interpretação desejada:
 - deve permanecer estável após o unlearning;
 - evita perda catastrófica do conhecimento compartilhado.
 
-#### 3. `mia_success_rate`
+#### 3. `mia_auc`
 
-Mede a taxa de sucesso de membership inference attack.
+Mede a ROC-AUC de um membership inference attack por limiar de loss. Compara
+amostras usadas no treino do cliente removido com amostras reservadas do mesmo
+cliente que nunca participaram do treino.
 
 Interpretação desejada:
 
-- quanto menor, melhor;
-- uma queda após o unlearning sugere redução da memorabilidade do cliente removido.
+- valores próximos de `0.5` indicam pouca evidência de pertencimento;
+- valores próximos de `1.0` indicam maior vazamento ou memorização;
+- após o unlearning, o objetivo é aproximar a métrica de `0.5` sem prejudicar o
+  conjunto retido.
 
 #### 4. `shap_drop_mean`
 
