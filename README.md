@@ -360,3 +360,4 @@ Se quiser reduzir redundância mais um passo, os cortes naturais são:
 2. extrair a montagem de dataset/cliente/servidor para uma única função pública;
 3. remover o wrapper legado de unlearning quando não houver dependência externa dele;
 4. adicionar `experiments/**/*.pyc` e saídas geradas ao `.gitignore` se ainda não estiverem cobertos.
+# UnL
