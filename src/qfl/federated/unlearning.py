@@ -34,6 +34,8 @@ class QFIUnlearningRun:
         num_rounds: int = 1,
         on_round_complete: Callable[[object], None] | None = None,
     ) -> dict[str, float | dict[str, float]]:
+        import time
+        start_time = time.perf_counter()
         clients = self.training_run.clients
         active_clients = [c for c in clients if c.client_id != self.excluded_client_id]
         excluded = [c for c in clients if c.client_id == self.excluded_client_id]
@@ -66,6 +68,7 @@ class QFIUnlearningRun:
         def _loss(x, y):
             return float(model.loss(x, y)) if len(x) else 0.0
 
+        duration = time.perf_counter() - start_time
         return {
             "global_weights": np.asarray(base_results[-1].global_weights, dtype=float).tolist(),
             "qfi_trace": model.qfi_trace(forget_x if len(forget_x) else retain_x[:1]),
@@ -77,4 +80,5 @@ class QFIUnlearningRun:
             "mia_auc": membership_inference_auc(model, forget_x, forget_y, forget_x_eval, forget_y_eval),
             "remaining_clients": float(len(active_clients)),
             "excluded_client": self.excluded_client_id,
+            "duration": float(duration),
         }

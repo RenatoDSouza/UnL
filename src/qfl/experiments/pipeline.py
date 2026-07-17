@@ -328,6 +328,8 @@ def run_training_experiment(config: TrainingExperimentConfig, checkpoint_name: s
                 config.num_clients,
                 config.num_rounds,
             )
+            import time
+            start_time = time.perf_counter()
             _, clients, server = _build_clients(config.num_clients, config.dataset_path, config.prefer_gpu, encoding, config.data_reuploads, config.max_samples_per_client, config.feature_mode, config.n_features, config.train_epochs, config.train_lr, config.num_layers, seed)
             run = FederatedTrainingRun(server=server, clients=clients)
             progress = ProgressTracker(label=f"QFL training ({encoding}, seed={seed})", total_steps=config.num_rounds)
@@ -352,11 +354,14 @@ def run_training_experiment(config: TrainingExperimentConfig, checkpoint_name: s
                     result.round_index,
                     result.metrics,
                 )
+            duration = time.perf_counter() - start_time
+            metrics_dict = dict(round_metrics[-1]) if round_metrics else {}
+            metrics_dict["duration"] = float(duration)
             seed_summary = {
                 "seed": seed,
                 "encoding": encoding,
                 "rounds": round_metrics,
-                "metrics": round_metrics[-1] if round_metrics else {},
+                "metrics": metrics_dict,
             }
             runs.append(seed_summary)
             final_payload = progress.checkpoint_payload(
@@ -510,12 +515,16 @@ def _run_unlearning_baselines(
     seed: int = 0,
 ):
     from copy import deepcopy
+    import time
 
     # The retrain reference is calculated first and passed into every mutating
     # variant. It is therefore a genuine stopping/evaluation reference, not a
     # post-hoc number reported after a majority-class proxy was used.
     set_seed(seed)
+    start_retrain = time.perf_counter()
     retrained_model = _retrain_without_excluded(split.active_clients, num_rounds, prefer_gpu, encoding, data_reuploads, num_layers)
+    duration_retrain = time.perf_counter() - start_retrain
+
     forget_acc = evaluate_accuracy(retrained_model, split.forget_x, split.forget_y)
     retain_acc = evaluate_accuracy(retrained_model, split.retain_x, split.retain_y)
     mia_auc_val = membership_inference_auc(retrained_model, split.forget_x, split.forget_y, split.forget_x_eval, split.forget_y_eval)
@@ -529,11 +538,13 @@ def _run_unlearning_baselines(
         "mia_auc_after": mia_auc_val,
         "qfi_trace": qfi_trace_val,
         "qfi_trace_after": qfi_trace_val,
+        "duration": float(duration_retrain),
     }
 
     baselines: dict[str, Any] = {}
     for mode in ("no_unlearning", "shap_only", "qfi_only", "shap_qfi"):
         baseline_model = deepcopy(model)
+        start_unlearn = time.perf_counter()
         report, _ = HybridSHAPQFIUnlearner(baseline_model).run(
             split.forget_x, split.forget_y, split.retain_x, split.retain_y,
             x_forget_eval=split.forget_x_eval, y_forget_eval=split.forget_y_eval,
@@ -541,6 +552,8 @@ def _run_unlearning_baselines(
             lr=unlearn_lr, max_steps=unlearn_max_steps, mode=mode, seed=seed,
             retrain_forget_accuracy=forget_acc, retrain_retain_accuracy=retain_acc,
         )
+        duration_unlearn = time.perf_counter() - start_unlearn
+
         baselines[mode] = {
             "forget_accuracy_before": report.forget_accuracy_before,
             "forget_accuracy_after": report.forget_accuracy_after,
@@ -560,6 +573,7 @@ def _run_unlearning_baselines(
             "accepted_step_sizes": list(report.accepted_step_sizes),
             "unlearning_steps": float(report.unlearning_steps),
             "shap_drop_mean": report.shap_drop_mean,
+            "duration": float(duration_unlearn),
         }
     baselines["retrain_complete"] = retrain_reference
     return baselines
