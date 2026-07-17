@@ -10,3 +10,6 @@ build/
 experiments/**/logs/
 experiments/**/outputs/
 data/*.npz
+.runtime/
+**/.ipynb_checkpoints/
+

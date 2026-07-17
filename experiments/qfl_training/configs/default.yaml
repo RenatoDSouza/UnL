@@ -1,7 +1,7 @@
 # Federated quantum training experiment.
 dataset_path: null
 num_clients: 5
-num_rounds: 5
+num_rounds: 20
 seed: 42
 seeds: [42, 43, 44]
 encoding_modes: [angle, iqp, reupload]

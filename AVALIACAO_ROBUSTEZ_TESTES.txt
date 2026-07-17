@@ -1,0 +1,210 @@
+AVALIAÇÃO DA ROBUSTEZ DOS TESTES E POSSÍVEIS INCONSISTÊNCIAS
+======================================================================
+
+Data da avaliação: 17/07/2026
+Escopo: testes unitários em tests/, smoke test em validacao/ e artefatos
+registrados em validacao/results.json.
+
+RESUMO EXECUTIVO
+----------------------------------------------------------------------
+
+Classificação geral da robustez: BAIXA A MODERADA.
+
+A suíte cobre contratos estruturais importantes (agregação federada,
+particionamento, formato da QFIM, encodings e serialização), mas ainda não
+valida de forma suficiente o comportamento científico central: se o método
+de unlearning realmente altera o modelo, aproxima seus resultados do
+retreinamento completo e preserva o conjunto retido.
+
+Resultados observados na execução:
+
+1. `pytest -q`: falha durante a coleta com 4 erros, porque o pacote `qfl`
+   não é encontrado sem instalação editable ou configuração do caminho src/.
+2. `PYTHONPATH=src pytest -q`: 14 testes passaram e 1 falhou, com 1 aviso,
+   em aproximadamente 126 segundos.
+3. A falha ocorre em
+   test_qfi_unlearning_run_trains_full_model: o teste cria
+   QFIUnlearningRun com prefer_gpu=True (padrão) e tenta abrir
+   lightning.gpu em uma máquina sem CUDA.
+
+INCONSISTÊNCIAS E RISCOS IDENTIFICADOS
+----------------------------------------------------------------------
+
+[CRÍTICA] 1. O smoke test aprova execuções em que nenhum unlearning ocorre
+
+Nos resultados dos três encodings (angle, iqp e reupload), os modos
+shap_only, qfi_only e shap_qfi registraram:
+
+- unlearning_steps = 0;
+- accepted_step_sizes = [];
+- shap_drop_mean = 0;
+- métricas antes e depois idênticas.
+
+Mesmo assim, run_smoke_validation.py termina sem erro. A única asserção
+explícita do script verifica num_layers. Portanto, o teste detecta falhas de
+execução e formato, mas não detecta a ineficácia completa do algoritmo.
+
+Recomendação: exigir ao menos um passo aceito para os modos mutantes em um
+caso sintético controlado, ou exigir melhora mensurável da distância para a
+referência de retreinamento. Se zero passos for um resultado permitido, o
+artefato deve registrar claramente o motivo da parada.
+
+[ALTA] 2. A suíte padrão não é reproduzível sem configuração manual
+
+O comando padrão `pytest -q` não encontra o pacote qfl. Isso pode causar
+falha imediata em CI e em ambientes novos, mesmo com o código correto.
+
+Recomendação: instalar o projeto com `pip install -e .`, configurar
+pythonpath = ["src"] no pytest, ou adicionar configuração equivalente ao
+ambiente de CI.
+
+[ALTA] 3. Um teste unitário depende acidentalmente de GPU
+
+test_qfi_unlearning_run_trains_full_model falha porque QFIUnlearningRun usa
+prefer_gpu=True por padrão. O próprio erro do código orienta usar
+prefer_gpu=False em testes, mas o teste não o faz.
+
+Recomendação: construir QFIUnlearningRun(..., prefer_gpu=False) nesse teste
+ou substituir o device por um double. Manter testes unitários independentes
+de CUDA e criar testes de integração GPU separados e marcados.
+
+[ALTA] 4. O smoke test tem poder estatístico praticamente nulo
+
+A validação usa somente 2 clientes, no máximo 12 amostras por cliente,
+1 rodada e 1 seed (7). Com uma única execução, desvio padrão igual a zero e
+intervalo de confiança com limites iguais à observação não representam
+incerteza estatística; representam apenas ausência de replicações.
+
+Recomendação: usar no mínimo 5 seeds para validação comparativa, mais
+clientes, mais rodadas e amostras suficientes. Para amostras pequenas,
+preferir intervalo t de Student ou bootstrap, e não apresentar um IC95%
+degenerado como evidência de estabilidade.
+
+[ALTA] 5. Não há teste de equivalência entre unlearning e retreinamento
+
+O retreinamento completo é calculado e usado como referência, mas não há
+asserção de que shap_only, qfi_only ou shap_qfi se aproximem dessa referência
+em forget accuracy, retain accuracy, loss, MIA AUC ou distância de pesos.
+
+Recomendação: criar um dataset determinístico pequeno no qual a remoção de
+um cliente produza efeito conhecido e comparar cada método contra o modelo
+retreinado do zero, com tolerâncias explícitas.
+
+[ALTA] 6. Métricas globais podem falhar silenciosamente
+
+FederatedTrainingRun._attach_global_metrics captura qualquer Exception,
+emite apenas um warning e mantém o treinamento. Assim, global_accuracy e
+global_loss podem desaparecer sem tornar a execução inválida. A falha de
+GPU observada durante os testes já acionou esse comportamento.
+
+Recomendação: falhar em modo de teste/validação quando métricas obrigatórias
+não puderem ser calculadas, ou adicionar um status explícito
+metrics_valid=false e testá-lo.
+
+[MÉDIA] 7. Os testes do unlearning verificam formato, não eficácia
+
+test_hybrid_unlearning_returns_report verifica a presença do relatório,
+formato da máscara e faixa do MIA AUC, mas não verifica alteração dos pesos,
+passos aceitos, redução da distância ao retreinamento ou preservação da
+acurácia retida. O teste pode passar com um algoritmo que não faz nada.
+
+Recomendação: verificar pesos antes/depois, objetivo antes/depois, máscara
+não trivial e critérios de parada.
+
+[MÉDIA] 8. Teste SHAP valida apenas agrupamento estrutural
+
+O teste confirma que parâmetros do mesmo wire recebem o mesmo valor, mas
+não valida a correção das atribuições, sua estabilidade, sinal, soma ou
+sensibilidade a uma feature conhecida.
+
+Recomendação: usar função/modelo pequeno com importância analítica conhecida
+e testar ranking e valores esperados dentro de tolerância.
+
+[MÉDIA] 9. Cobertura da QFIM é parcial
+
+Há uma boa checagem analítica de QFI = 4 * métrica de Fubini-Study para um
+circuito RY simples, além do teste de erro explícito. Porém, não há teste
+numérico da qfi_matrix do QuantumClassifier para os três encodings, nem de
+simetria, semidefinição positiva, dimensões por bloco e estabilidade da
+inversão regularizada.
+
+Recomendação: adicionar propriedades matriciais e casos analíticos para
+angle, iqp e reupload.
+
+[MÉDIA] 10. Avaliação de privacidade é estreita e instável
+
+MIA AUC usa apenas um ataque por limiar de loss e conjuntos muito pequenos.
+Valores próximos de 0,5 podem decorrer de baixa potência amostral, e não de
+esquecimento. Também não são registrados intervalos de confiança próprios
+do ataque.
+
+Recomendação: aumentar membros/não membros, aplicar bootstrap ao AUC e usar
+ataques adicionais ou ao menos um teste de hipótese contra AUC=0,5.
+
+[MÉDIA] 11. Apenas um cliente é excluído
+
+O smoke test sempre remove client_0. Não testa outros clientes, múltiplas
+remoções, cliente inexistente no fluxo completo, cliente único restante,
+distribuições desbalanceadas ou cenários non-IID/backdoor.
+
+Recomendação: parametrizar clientes excluídos e adicionar casos de borda e
+cenários de distribuição diferentes.
+
+[MÉDIA] 12. Accuracy isolada pode mascarar ausência de esquecimento
+
+Forget accuracy não precisa necessariamente cair após o esquecimento: um
+modelo retreinado pode generalizar corretamente para os dados excluídos.
+Logo, interpretar toda queda como sucesso é incorreto. É necessário comparar
+com a referência retreinada e combinar accuracy, loss, MIA e distância de
+predições/parâmetros.
+
+Recomendação: definir sucesso como proximidade ao retraining completo e não
+como simples redução da forget accuracy.
+
+[BAIXA] 13. Há um aviso de compatibilidade futura com NumPy
+
+test_pure_state_qfim_is_four_times_fubini_study_metric converte diretamente
+um array com dimensão maior que zero para float. O NumPy informa que isso
+será erro em versão futura.
+
+Recomendação: extrair explicitamente o escalar antes de chamar float.
+
+[BAIXA] 14. Tempo alto para uma suíte pequena
+
+Quinze testes levaram cerca de 126 segundos no ambiente avaliado. Isso reduz
+a frequência de execução local e pode incentivar que a suíte seja ignorada.
+
+Recomendação: marcar testes quânticos lentos, usar doubles em testes de
+unidade e separar unitários rápidos de integração/GPU.
+
+PONTOS POSITIVOS EXISTENTES
+----------------------------------------------------------------------
+
+- A agregação federada ponderada por número de amostras é testada.
+- O particionamento e a compressão de features têm verificações básicas.
+- A convenção QFI = 4 * Fubini-Study possui uma referência analítica.
+- Falhas de cálculo da QFIM não são silenciosamente substituídas por identidade.
+- O formato de pesos do encoding reupload é testado.
+- Metadados, múltiplas seeds e estatísticas agregadas têm testes básicos.
+- O retreinamento exclui client_0 da lista de clientes ativos no código.
+
+PRIORIDADE SUGERIDA DE CORREÇÃO
+----------------------------------------------------------------------
+
+1. Corrigir coleta/importação e remover dependência acidental de GPU.
+2. Fazer o smoke test falhar quando os modos mutantes executarem zero passos
+   sem justificativa ou não alterarem nenhuma métrica/peso em caso controlado.
+3. Criar teste de equivalência comportamental com retreinamento completo.
+4. Executar várias seeds e reportar incerteza estatística válida.
+5. Ampliar testes de QFIM, SHAP, MIA e cenários federados adversos/non-IID.
+
+CONCLUSÃO
+----------------------------------------------------------------------
+
+Os testes atuais são úteis como verificação estrutural e de integração
+mínima, mas não sustentam uma afirmação robusta de que o unlearning foi
+efetivo. O principal resultado experimental atual é inconclusivo: todos os
+métodos mutantes executaram zero passos e ainda assim a validação foi
+considerada bem-sucedida. Antes de interpretar as métricas como evidência
+científica, é necessário adicionar critérios comportamentais, replicações e
+comparação formal com o retreinamento completo.
