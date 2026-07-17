@@ -1,6 +1,20 @@
 {
   "ablation": {
     "iqp": {
+      "global_accuracy_ci95_high": 0.75,
+      "global_accuracy_ci95_low": 0.75,
+      "global_accuracy_max": 0.75,
+      "global_accuracy_mean": 0.75,
+      "global_accuracy_median": 0.75,
+      "global_accuracy_min": 0.75,
+      "global_accuracy_std": 0.0,
+      "global_loss_ci95_high": 0.22974602071786002,
+      "global_loss_ci95_low": 0.22974602071786002,
+      "global_loss_max": 0.22974602071786002,
+      "global_loss_mean": 0.22974602071786002,
+      "global_loss_median": 0.22974602071786002,
+      "global_loss_min": 0.22974602071786002,
+      "global_loss_std": 0.0,
       "num_clients_ci95_high": 2.0,
       "num_clients_ci95_low": 2.0,
       "num_clients_max": 2.0,
@@ -13,30 +27,69 @@
         {
           "encoding": "iqp",
           "metrics": {
-            "num_clients": 2.0
+            "global_accuracy": 0.75,
+            "global_loss": 0.22974602071786002,
+            "num_clients": 2.0,
+            "train_accuracy": 0.75,
+            "train_loss": 0.2285051302434076
           },
           "rounds": [
             {
-              "num_clients": 2.0
+              "global_accuracy": 0.75,
+              "global_loss": 0.22974602071786002,
+              "num_clients": 2.0,
+              "train_accuracy": 0.75,
+              "train_loss": 0.2285051302434076
             }
           ],
           "seed": 7
         }
-      ]
+      ],
+      "train_accuracy_ci95_high": 0.75,
+      "train_accuracy_ci95_low": 0.75,
+      "train_accuracy_max": 0.75,
+      "train_accuracy_mean": 0.75,
+      "train_accuracy_median": 0.75,
+      "train_accuracy_min": 0.75,
+      "train_accuracy_std": 0.0,
+      "train_loss_ci95_high": 0.2285051302434076,
+      "train_loss_ci95_low": 0.2285051302434076,
+      "train_loss_max": 0.2285051302434076,
+      "train_loss_mean": 0.2285051302434076,
+      "train_loss_median": 0.2285051302434076,
+      "train_loss_min": 0.2285051302434076,
+      "train_loss_std": 0.0
     }
   },
+  "global_accuracy_ci95_high": 0.75,
+  "global_accuracy_ci95_low": 0.75,
+  "global_accuracy_max": 0.75,
+  "global_accuracy_mean": 0.75,
+  "global_accuracy_median": 0.75,
+  "global_accuracy_min": 0.75,
+  "global_accuracy_std": 0.0,
+  "global_loss_ci95_high": 0.22974602071786002,
+  "global_loss_ci95_low": 0.22974602071786002,
+  "global_loss_max": 0.22974602071786002,
+  "global_loss_mean": 0.22974602071786002,
+  "global_loss_median": 0.22974602071786002,
+  "global_loss_min": 0.22974602071786002,
+  "global_loss_std": 0.0,
   "metadata": {
     "data_reuploads": 2,
-    "dataset_path": "validacao/synthetic_validation.npz",
+    "dataset_path": null,
     "encoding_modes": [
       "iqp"
     ],
+    "gpu_policy": "lightning.gpu required when prefer_gpu=true; no CPU fallback",
     "num_clients": 2,
+    "num_layers": 2,
     "num_rounds": 1,
-    "platform": "Linux-6.6.87.2-microsoft-standard-WSL2-x86_64-with-glibc2.35",
-    "prefer_gpu": false,
+    "platform": "Linux-6.8.0-124-generic-x86_64-with-glibc2.35",
+    "prefer_gpu": true,
     "processor": "x86_64",
     "python_version": "3.10.12",
+    "qfi_definition": "pure_state_qfim=4*fubini_study_metric; block-diagonal approximation",
     "seed": 7,
     "seeds": [
       7
@@ -54,14 +107,36 @@
     {
       "encoding": "iqp",
       "metrics": {
-        "num_clients": 2.0
+        "global_accuracy": 0.75,
+        "global_loss": 0.22974602071786002,
+        "num_clients": 2.0,
+        "train_accuracy": 0.75,
+        "train_loss": 0.2285051302434076
       },
       "rounds": [
         {
-          "num_clients": 2.0
+          "global_accuracy": 0.75,
+          "global_loss": 0.22974602071786002,
+          "num_clients": 2.0,
+          "train_accuracy": 0.75,
+          "train_loss": 0.2285051302434076
         }
       ],
       "seed": 7
     }
-  ]
+  ],
+  "train_accuracy_ci95_high": 0.75,
+  "train_accuracy_ci95_low": 0.75,
+  "train_accuracy_max": 0.75,
+  "train_accuracy_mean": 0.75,
+  "train_accuracy_median": 0.75,
+  "train_accuracy_min": 0.75,
+  "train_accuracy_std": 0.0,
+  "train_loss_ci95_high": 0.2285051302434076,
+  "train_loss_ci95_low": 0.2285051302434076,
+  "train_loss_max": 0.2285051302434076,
+  "train_loss_mean": 0.2285051302434076,
+  "train_loss_median": 0.2285051302434076,
+  "train_loss_min": 0.2285051302434076,
+  "train_loss_std": 0.0
 }

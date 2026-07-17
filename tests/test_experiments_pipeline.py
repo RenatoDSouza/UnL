@@ -1,6 +1,11 @@
 from __future__ import annotations
 
-from qfl.experiments.pipeline import TrainingExperimentConfig, _aggregate_runs, experiment_metadata, load_training_config
+from pathlib import Path
+
+import pytest
+
+from qfl.experiments.pipeline import TrainingExperimentConfig, _aggregate_runs, _normalize_config, experiment_metadata, load_training_config
+from qfl.utils.checkpoint import save_progress_checkpoint
 
 
 def test_aggregate_runs_computes_mean_and_std():
@@ -37,3 +42,30 @@ def test_load_training_config_accepts_encoding_modes():
     config = load_training_config({"encoding_modes": ["angle", "iqp"], "data_reuploads": 2})
     assert config.encoding_modes == ["angle", "iqp"]
     assert config.data_reuploads == 2
+
+
+def test_experiment_configuration_requires_cuda():
+    with pytest.raises(ValueError, match="CUDA"):
+        _normalize_config(TrainingExperimentConfig(prefer_gpu=False))
+
+
+def test_progress_checkpoint_is_human_readable(tmp_path: Path):
+    checkpoint = tmp_path / "progress.txt"
+    save_progress_checkpoint(
+        checkpoint,
+        {
+            "status": "running",
+            "label": "QFL training (angle, seed=7)",
+            "current_step": 1,
+            "total_steps": 5,
+            "updated_at_utc": "2026-07-16T00:00:00+00:00",
+            "eta_seconds": 120.0,
+            "seed": 7,
+            "encoding": "angle",
+            "metrics": {"global_accuracy": 0.5},
+        },
+    )
+
+    text = checkpoint.read_text(encoding="utf-8")
+    assert "Progresso: 1/5" in text
+    assert "global_accuracy" in text

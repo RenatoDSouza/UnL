@@ -3,8 +3,6 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-import numpy as np
-
 from qfl.experiments.pipeline import (
     TrainingExperimentConfig,
     UnlearningExperimentConfig,
@@ -12,50 +10,58 @@ from qfl.experiments.pipeline import (
     run_unlearning_experiment,
 )
 
+NUM_LAYERS = 2
+MAX_SAMPLES_PER_CLIENT = 12
+NUM_FEATURES = 4
+
 
 def _write(path: Path, payload: dict) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
 
 
+def _assert_num_layers(summary: dict, expected: int) -> None:
+    metadata = summary.get("metadata", {})
+    actual = metadata.get("num_layers")
+    if actual != expected:
+        raise RuntimeError(f"Smoke test expected num_layers={expected}, got {actual}")
+
+
 def main() -> None:
     base_dir = Path("validacao")
     training_out = base_dir / "training_outputs"
     unlearning_out = base_dir / "unlearning_outputs"
-    dataset_path = base_dir / "synthetic_validation.npz"
-    x = np.array(
-        [
-            [0.1, 0.2, 0.3, 0.4],
-            [0.2, 0.3, 0.4, 0.5],
-            [0.8, 0.7, 0.6, 0.5],
-            [0.9, 0.8, 0.7, 0.6],
-            [0.15, 0.25, 0.35, 0.45],
-            [0.85, 0.75, 0.65, 0.55],
-        ],
-        dtype=float,
-    )
-    y = np.array([0, 0, 1, 1, 0, 1], dtype=int)
-    np.savez(dataset_path, x=x, y=y)
-
     encodings = ["angle", "iqp", "reupload"]
-    payload: dict[str, object] = {"encodings": encodings, "training": {}, "unlearning": {}}
+    payload: dict[str, object] = {
+        "encodings": encodings,
+        "num_layers": NUM_LAYERS,
+        "dataset": "flwrlabs/femnist (digits 0 and 1 only)",
+        "max_samples_per_client": MAX_SAMPLES_PER_CLIENT,
+        "num_features": NUM_FEATURES,
+        "training": {},
+        "unlearning": {},
+    }
 
     for encoding in encodings:
         train_config = TrainingExperimentConfig(
-            dataset_path=str(dataset_path),
             num_clients=2,
             num_rounds=1,
             seed=7,
             seeds=[7],
             encoding_modes=[encoding],
             data_reuploads=2,
-            prefer_gpu=False,
+            num_layers=NUM_LAYERS,
+            feature_mode="binary",
+            n_features=NUM_FEATURES,
+            max_samples_per_client=MAX_SAMPLES_PER_CLIENT,
+            prefer_gpu=True,
             output_dir=str(training_out / encoding),
         )
-        payload["training"][encoding] = run_training_experiment(train_config)
+        training_summary = run_training_experiment(train_config)
+        _assert_num_layers(training_summary, NUM_LAYERS)
+        payload["training"][encoding] = training_summary
 
         unlearn_config = UnlearningExperimentConfig(
-            dataset_path=str(dataset_path),
             num_clients=2,
             num_rounds=1,
             excluded_client_id="client_0",
@@ -63,10 +69,18 @@ def main() -> None:
             seeds=[7],
             encoding_modes=[encoding],
             data_reuploads=2,
-            prefer_gpu=False,
+            num_layers=NUM_LAYERS,
+            feature_mode="binary",
+            n_features=NUM_FEATURES,
+            max_samples_per_client=MAX_SAMPLES_PER_CLIENT,
+            shap_permutations=1,
+            unlearn_max_steps=1,
+            prefer_gpu=True,
             output_dir=str(unlearning_out / encoding),
         )
-        payload["unlearning"][encoding] = run_unlearning_experiment(unlearn_config)
+        unlearning_summary = run_unlearning_experiment(unlearn_config)
+        _assert_num_layers(unlearning_summary, NUM_LAYERS)
+        payload["unlearning"][encoding] = unlearning_summary
 
     _write(base_dir / "results.json", payload)
 

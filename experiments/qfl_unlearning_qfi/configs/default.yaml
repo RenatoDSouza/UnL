@@ -8,10 +8,11 @@ seed: 42
 seeds: [42, 43, 44]
 encoding_modes: [angle, iqp, reupload]
 data_reuploads: 2
-prefer_gpu: false
+prefer_gpu: true
 
 # Representation / model capacity
-feature_mode: pca        # "pca" (n_features) or "quadrants" (4 features)
+# Usa exclusivamente os dígitos 0 (classe 0) e 1 (classe 1) do FEMNIST.
+feature_mode: binary
 n_features: 8
 num_layers: 2
 train_epochs: 8
@@ -20,7 +21,7 @@ train_lr: 0.2
 # Unlearning method (SHAP attribution + QFI-preconditioned ascent)
 shap_permutations: 16    # Monte-Carlo samples for Shapley values
 unlearn_lr: 0.4
-unlearn_max_steps: 12    # ascent stops early at the uninformed accuracy
+unlearn_max_steps: 12    # backtracking ascent targets the retrain-without-client reference
 mask_quantile: 0.5       # keep the top-attributed parameter blocks
 
 # Runtime bound: cap samples/client (null = use all ~380). The 8-qubit QFI

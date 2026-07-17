@@ -1,20 +1,37 @@
 {
   "current_step": 1,
+  "encoding": "reupload",
   "eta_seconds": 0.0,
   "label": "QFL training (reupload, seed=7)",
+  "metrics": {
+    "global_accuracy": 0.7916666666666666,
+    "global_loss": 0.1943553253922454,
+    "num_clients": 2.0,
+    "train_accuracy": 0.7916666666666666,
+    "train_loss": 0.18836511376121556
+  },
+  "seed": 7,
   "status": "completed",
   "summary": {
     "encoding": "reupload",
     "metrics": {
-      "num_clients": 2.0
+      "global_accuracy": 0.7916666666666666,
+      "global_loss": 0.1943553253922454,
+      "num_clients": 2.0,
+      "train_accuracy": 0.7916666666666666,
+      "train_loss": 0.18836511376121556
     },
     "rounds": [
       {
-        "num_clients": 2.0
+        "global_accuracy": 0.7916666666666666,
+        "global_loss": 0.1943553253922454,
+        "num_clients": 2.0,
+        "train_accuracy": 0.7916666666666666,
+        "train_loss": 0.18836511376121556
       }
     ],
     "seed": 7
   },
   "total_steps": 1,
-  "updated_at_utc": "2026-07-08T13:16:20.385213+00:00"
+  "updated_at_utc": "2026-07-17T16:41:04.712151+00:00"
 }

@@ -1,2 +1,6 @@
 seed,encoding,scope,name,value
 7,angle,metrics,num_clients,2.0
+7,angle,metrics,train_loss,0.17624023071951886
+7,angle,metrics,train_accuracy,0.8333333333333334
+7,angle,metrics,global_accuracy,0.7916666666666666
+7,angle,metrics,global_loss,0.18200904747498603

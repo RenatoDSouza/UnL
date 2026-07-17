@@ -1,0 +1,7 @@
+Status: completed
+Experimento: QFI unlearning (reupload, seed=7)
+Progresso: 1/1
+Atualizado (UTC): 2026-07-17T16:58:50.816902+00:00
+ETA (segundos): 0.0
+seed: 7
+encoding: "reupload"

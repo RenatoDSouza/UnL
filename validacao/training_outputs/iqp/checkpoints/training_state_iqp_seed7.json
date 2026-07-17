@@ -1,20 +1,37 @@
 {
   "current_step": 1,
+  "encoding": "iqp",
   "eta_seconds": 0.0,
   "label": "QFL training (iqp, seed=7)",
+  "metrics": {
+    "global_accuracy": 0.75,
+    "global_loss": 0.22974602071786002,
+    "num_clients": 2.0,
+    "train_accuracy": 0.75,
+    "train_loss": 0.2285051302434076
+  },
+  "seed": 7,
   "status": "completed",
   "summary": {
     "encoding": "iqp",
     "metrics": {
-      "num_clients": 2.0
+      "global_accuracy": 0.75,
+      "global_loss": 0.22974602071786002,
+      "num_clients": 2.0,
+      "train_accuracy": 0.75,
+      "train_loss": 0.2285051302434076
     },
     "rounds": [
       {
-        "num_clients": 2.0
+        "global_accuracy": 0.75,
+        "global_loss": 0.22974602071786002,
+        "num_clients": 2.0,
+        "train_accuracy": 0.75,
+        "train_loss": 0.2285051302434076
       }
     ],
     "seed": 7
   },
   "total_steps": 1,
-  "updated_at_utc": "2026-07-08T13:15:38.618615+00:00"
+  "updated_at_utc": "2026-07-17T16:27:49.462128+00:00"
 }

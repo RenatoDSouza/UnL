@@ -185,14 +185,15 @@ def load_femnist_binary_partitions(
     class_b: int = 1,
     cache_path: str | Path | None = None,
 ) -> list[FEMNISTSplit]:
-    """Balanced binary FEMNIST task (two digit classes) with PCA features.
+    """Balanced FEMNIST task using exclusively digits 0 and 1, with PCA features.
 
-    Unlike the writer-partitioned multiclass task, this pools two visually
+    Unlike the writer-partitioned multiclass task, this pools only digits 0 and
+    1, then partitions them IID across clients. It is visually
     separable classes and partitions them IID across clients. It is learnable by
     a shallow VQC (base rate 0.5), so the model actually fits -- and can memorise
     -- the forget client, which is the prerequisite for demonstrating unlearning.
     """
-    cache_path = Path(cache_path) if cache_path else Path("data") / f"femnist_bin{class_a}{class_b}.npz"
+    cache_path = Path(cache_path) if cache_path else Path("data") / f"femnist_digits_{class_a}_{class_b}.npz"
     _ensure_binary_cache(cache_path, class_a, class_b)
     data = np.load(cache_path)
     x_raw = normalize_images(data["x"]).reshape(len(data["x"]), -1)
@@ -404,4 +405,3 @@ def load_femnist_partitions(
             )
         )
     return splits
-

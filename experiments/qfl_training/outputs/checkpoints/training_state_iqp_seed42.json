@@ -1,26 +1,65 @@
 {
-  "current_step": 3,
+  "current_step": 5,
+  "encoding": "iqp",
   "eta_seconds": 0.0,
   "label": "QFL training (iqp, seed=42)",
+  "metrics": {
+    "global_accuracy": 0.5366666666666666,
+    "global_loss": 0.24801825147642054,
+    "num_clients": 5.0,
+    "train_accuracy": 0.575,
+    "train_loss": 0.247257928530846
+  },
+  "seed": 42,
   "status": "completed",
   "summary": {
     "encoding": "iqp",
     "metrics": {
-      "num_clients": 5.0
+      "global_accuracy": 0.5366666666666666,
+      "global_loss": 0.24801825147642054,
+      "num_clients": 5.0,
+      "train_accuracy": 0.575,
+      "train_loss": 0.247257928530846
     },
     "rounds": [
       {
-        "num_clients": 5.0
+        "global_accuracy": 0.47,
+        "global_loss": 0.2498623870716539,
+        "num_clients": 5.0,
+        "train_accuracy": 0.5166666666666667,
+        "train_loss": 0.24903482032976806
       },
       {
-        "num_clients": 5.0
+        "global_accuracy": 0.49,
+        "global_loss": 0.2493687966200311,
+        "num_clients": 5.0,
+        "train_accuracy": 0.5333333333333333,
+        "train_loss": 0.24856435718939499
       },
       {
-        "num_clients": 5.0
+        "global_accuracy": 0.5033333333333333,
+        "global_loss": 0.2489076487154722,
+        "num_clients": 5.0,
+        "train_accuracy": 0.535,
+        "train_loss": 0.2481215108448786
+      },
+      {
+        "global_accuracy": 0.5233333333333333,
+        "global_loss": 0.24846257704637215,
+        "num_clients": 5.0,
+        "train_accuracy": 0.5566666666666666,
+        "train_loss": 0.24769085910869157
+      },
+      {
+        "global_accuracy": 0.5366666666666666,
+        "global_loss": 0.24801825147642054,
+        "num_clients": 5.0,
+        "train_accuracy": 0.575,
+        "train_loss": 0.247257928530846
       }
     ],
     "seed": 42
   },
-  "total_steps": 3,
-  "updated_at_utc": "2026-07-08T16:45:07.669120+00:00"
+  "total_steps": 5,
+  "updated_at_utc": "2026-07-17T13:25:45.641263+00:00"
 }

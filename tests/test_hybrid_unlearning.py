@@ -21,14 +21,15 @@ def test_hybrid_unlearning_returns_report(monkeypatch):
     y_retain = np.ones(3, dtype=int)
 
     report, artifacts = unlearner.run(
-        x_forget, y_forget, x_retain, y_retain, num_shap_permutations=2, mask_quantile=0.5, lr=0.01
+        x_forget, y_forget, x_retain, y_retain, num_shap_permutations=2, mask_quantile=0.5, lr=0.01,
+        retrain_forget_accuracy=0.5, retrain_retain_accuracy=0.5,
     )
 
     assert report.qfi_trace_before == 1.0
     assert "mask" in artifacts
     assert artifacts["mask"].shape == (model.weights.size,)
     assert 0.0 <= report.mia_auc_after <= 1.0
-    assert report.uninformed_accuracy in (0.5, 1.0)
+    assert report.retrain_forget_accuracy == 0.5
 
 
 def test_shapley_attribution_groups_by_wire():

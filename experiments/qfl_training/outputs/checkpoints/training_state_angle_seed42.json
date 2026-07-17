@@ -1,26 +1,65 @@
 {
-  "current_step": 3,
+  "current_step": 5,
+  "encoding": "angle",
   "eta_seconds": 0.0,
   "label": "QFL training (angle, seed=42)",
+  "metrics": {
+    "global_accuracy": 0.71,
+    "global_loss": 0.1712491989030419,
+    "num_clients": 5.0,
+    "train_accuracy": 0.6983333333333334,
+    "train_loss": 0.18554772110186227
+  },
+  "seed": 42,
   "status": "completed",
   "summary": {
     "encoding": "angle",
     "metrics": {
-      "num_clients": 5.0
+      "global_accuracy": 0.71,
+      "global_loss": 0.1712491989030419,
+      "num_clients": 5.0,
+      "train_accuracy": 0.6983333333333334,
+      "train_loss": 0.18554772110186227
     },
     "rounds": [
       {
-        "num_clients": 5.0
+        "global_accuracy": 0.73,
+        "global_loss": 0.18127921943064032,
+        "num_clients": 5.0,
+        "train_accuracy": 0.705,
+        "train_loss": 0.19501044799681264
       },
       {
-        "num_clients": 5.0
+        "global_accuracy": 0.7233333333333334,
+        "global_loss": 0.17737806277468546,
+        "num_clients": 5.0,
+        "train_accuracy": 0.6966666666666667,
+        "train_loss": 0.19137492486372026
       },
       {
-        "num_clients": 5.0
+        "global_accuracy": 0.7233333333333334,
+        "global_loss": 0.17463887246638962,
+        "num_clients": 5.0,
+        "train_accuracy": 0.7016666666666667,
+        "train_loss": 0.18879633867974296
+      },
+      {
+        "global_accuracy": 0.7133333333333334,
+        "global_loss": 0.1726793875979822,
+        "num_clients": 5.0,
+        "train_accuracy": 0.7,
+        "train_loss": 0.18692972600260946
+      },
+      {
+        "global_accuracy": 0.71,
+        "global_loss": 0.1712491989030419,
+        "num_clients": 5.0,
+        "train_accuracy": 0.6983333333333334,
+        "train_loss": 0.18554772110186227
       }
     ],
     "seed": 42
   },
-  "total_steps": 3,
-  "updated_at_utc": "2026-07-08T14:31:01.664730+00:00"
+  "total_steps": 5,
+  "updated_at_utc": "2026-07-17T00:09:43.088563+00:00"
 }

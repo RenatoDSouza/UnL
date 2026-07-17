@@ -1,0 +1,8 @@
+Status: completed
+Experimento: QFL training (angle, seed=7)
+Progresso: 1/1
+Atualizado (UTC): 2026-07-17T16:15:59.030262+00:00
+ETA (segundos): 0.0
+seed: 7
+encoding: "angle"
+metrics: {"global_accuracy": 0.7916666666666666, "global_loss": 0.18200904747498603, "num_clients": 2.0, "train_accuracy": 0.8333333333333334, "train_loss": 0.17624023071951886}

@@ -1,2 +1,6 @@
 seed,encoding,scope,name,value
 7,reupload,metrics,num_clients,2.0
+7,reupload,metrics,train_loss,0.18836511376121556
+7,reupload,metrics,train_accuracy,0.7916666666666666
+7,reupload,metrics,global_accuracy,0.7916666666666666
+7,reupload,metrics,global_loss,0.1943553253922454

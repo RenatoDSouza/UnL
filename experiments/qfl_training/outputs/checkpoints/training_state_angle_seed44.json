@@ -1,26 +1,65 @@
 {
-  "current_step": 3,
+  "current_step": 5,
+  "encoding": "angle",
   "eta_seconds": 0.0,
   "label": "QFL training (angle, seed=44)",
+  "metrics": {
+    "global_accuracy": 0.6466666666666666,
+    "global_loss": 0.20217953993558868,
+    "num_clients": 5.0,
+    "train_accuracy": 0.6833333333333333,
+    "train_loss": 0.1937386334581595
+  },
+  "seed": 44,
   "status": "completed",
   "summary": {
     "encoding": "angle",
     "metrics": {
-      "num_clients": 5.0
+      "global_accuracy": 0.6466666666666666,
+      "global_loss": 0.20217953993558868,
+      "num_clients": 5.0,
+      "train_accuracy": 0.6833333333333333,
+      "train_loss": 0.1937386334581595
     },
     "rounds": [
       {
-        "num_clients": 5.0
+        "global_accuracy": 0.6533333333333333,
+        "global_loss": 0.2047010047842393,
+        "num_clients": 5.0,
+        "train_accuracy": 0.6716666666666666,
+        "train_loss": 0.1965225112705377
       },
       {
-        "num_clients": 5.0
+        "global_accuracy": 0.6566666666666666,
+        "global_loss": 0.20375284922670509,
+        "num_clients": 5.0,
+        "train_accuracy": 0.675,
+        "train_loss": 0.1955083969926252
       },
       {
-        "num_clients": 5.0
+        "global_accuracy": 0.6566666666666666,
+        "global_loss": 0.2030620634200922,
+        "num_clients": 5.0,
+        "train_accuracy": 0.68,
+        "train_loss": 0.19475179308878263
+      },
+      {
+        "global_accuracy": 0.65,
+        "global_loss": 0.20255499876883382,
+        "num_clients": 5.0,
+        "train_accuracy": 0.6816666666666666,
+        "train_loss": 0.19417906875232244
+      },
+      {
+        "global_accuracy": 0.6466666666666666,
+        "global_loss": 0.20217953993558868,
+        "num_clients": 5.0,
+        "train_accuracy": 0.6833333333333333,
+        "train_loss": 0.1937386334581595
       }
     ],
     "seed": 44
   },
-  "total_steps": 3,
-  "updated_at_utc": "2026-07-08T15:49:21.890463+00:00"
+  "total_steps": 5,
+  "updated_at_utc": "2026-07-17T08:26:46.440473+00:00"
 }

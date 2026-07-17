@@ -1,0 +1,8 @@
+Status: completed
+Experimento: QFL training (iqp, seed=7)
+Progresso: 1/1
+Atualizado (UTC): 2026-07-17T16:27:49.462128+00:00
+ETA (segundos): 0.0
+seed: 7
+encoding: "iqp"
+metrics: {"global_accuracy": 0.75, "global_loss": 0.22974602071786002, "num_clients": 2.0, "train_accuracy": 0.75, "train_loss": 0.2285051302434076}

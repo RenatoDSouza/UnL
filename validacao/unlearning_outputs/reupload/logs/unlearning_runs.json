@@ -6,118 +6,196 @@
       "summary": {
         "baselines": {
           "no_unlearning": {
-            "forget_accuracy_after": 0.0,
-            "forget_accuracy_before": 0.0,
-            "mia_success_rate_after": 0.6666666666666666,
-            "mia_success_rate_before": 0.6666666666666666,
-            "qfi_trace_after": 4.663606094543489,
-            "qfi_trace_before": 2.4e-05,
-            "retain_accuracy_after": 0.0,
-            "retain_accuracy_before": 0.0,
-            "shap_drop_mean": 0.0
+            "accepted_step_sizes": [],
+            "forget_accuracy_after": 0.8333333333333334,
+            "forget_accuracy_before": 0.8333333333333334,
+            "forget_loss_after": 0.19827175321153134,
+            "forget_loss_before": 0.19827175321153132,
+            "mia_auc_after": 0.5688997821350763,
+            "mia_auc_before": 0.5688997821350763,
+            "qfi_condition_number": null,
+            "qfi_trace_after": 40.77454242188915,
+            "qfi_trace_before": 40.77454242188915,
+            "retain_accuracy_after": 0.75,
+            "retain_accuracy_before": 0.75,
+            "retain_loss_after": 0.19043889757295943,
+            "retain_loss_before": 0.19043889757295943,
+            "retrain_forget_accuracy": 0.8333333333333334,
+            "retrain_retain_accuracy": 0.75,
+            "shap_drop_mean": 0.0,
+            "unlearning_steps": 0.0
           },
           "qfi_only": {
-            "forget_accuracy_after": 0.0,
-            "forget_accuracy_before": 0.0,
-            "mia_success_rate_after": 0.6666666666666666,
-            "mia_success_rate_before": 0.6666666666666666,
-            "qfi_trace_after": 4.663606094543489,
-            "qfi_trace_before": 2.4e-05,
-            "retain_accuracy_after": 0.0,
-            "retain_accuracy_before": 0.0,
-            "shap_drop_mean": 0.0
+            "accepted_step_sizes": [],
+            "forget_accuracy_after": 0.8333333333333334,
+            "forget_accuracy_before": 0.8333333333333334,
+            "forget_loss_after": 0.19827175321153134,
+            "forget_loss_before": 0.19827175321153132,
+            "mia_auc_after": 0.5688997821350763,
+            "mia_auc_before": 0.5688997821350763,
+            "qfi_condition_number": 4.4095918037089525,
+            "qfi_trace_after": 40.77454242188915,
+            "qfi_trace_before": 40.77454242188915,
+            "retain_accuracy_after": 0.75,
+            "retain_accuracy_before": 0.75,
+            "retain_loss_after": 0.19043889757295943,
+            "retain_loss_before": 0.19043889757295943,
+            "retrain_forget_accuracy": 0.8333333333333334,
+            "retrain_retain_accuracy": 0.75,
+            "shap_drop_mean": 0.0,
+            "unlearning_steps": 0.0
           },
           "retrain_complete": {
-            "forget_accuracy": 0.0,
-            "mia_success_rate": 0.6666666666666666,
-            "qfi_trace": 2.4e-05,
-            "retain_accuracy": 0.0
+            "forget_accuracy": 0.8333333333333334,
+            "forget_accuracy_after": 0.8333333333333334,
+            "mia_auc": 0.5535130718954249,
+            "mia_auc_after": 0.5535130718954249,
+            "qfi_trace": 40.710740059161715,
+            "qfi_trace_after": 40.710740059161715,
+            "retain_accuracy": 0.75,
+            "retain_accuracy_after": 0.75
           },
           "shap_only": {
-            "forget_accuracy_after": 0.0,
-            "forget_accuracy_before": 0.0,
-            "mia_success_rate_after": 0.6666666666666666,
-            "mia_success_rate_before": 0.6666666666666666,
-            "qfi_trace_after": 4.663606094543489,
-            "qfi_trace_before": 2.4e-05,
-            "retain_accuracy_after": 0.0,
-            "retain_accuracy_before": 0.0,
-            "shap_drop_mean": 0.0
+            "accepted_step_sizes": [],
+            "forget_accuracy_after": 0.8333333333333334,
+            "forget_accuracy_before": 0.8333333333333334,
+            "forget_loss_after": 0.19827175321153134,
+            "forget_loss_before": 0.19827175321153132,
+            "mia_auc_after": 0.5688997821350763,
+            "mia_auc_before": 0.5688997821350763,
+            "qfi_condition_number": null,
+            "qfi_trace_after": 40.77454242188915,
+            "qfi_trace_before": 40.77454242188915,
+            "retain_accuracy_after": 0.75,
+            "retain_accuracy_before": 0.75,
+            "retain_loss_after": 0.19043889757295943,
+            "retain_loss_before": 0.19043889757295943,
+            "retrain_forget_accuracy": 0.8333333333333334,
+            "retrain_retain_accuracy": 0.75,
+            "shap_drop_mean": 0.0,
+            "unlearning_steps": 0.0
           },
           "shap_qfi": {
-            "forget_accuracy_after": 0.0,
-            "forget_accuracy_before": 0.0,
-            "mia_success_rate_after": 0.6666666666666666,
-            "mia_success_rate_before": 0.6666666666666666,
-            "qfi_trace_after": 4.663606094543489,
-            "qfi_trace_before": 2.4e-05,
-            "retain_accuracy_after": 0.0,
-            "retain_accuracy_before": 0.0,
-            "shap_drop_mean": 0.0
+            "accepted_step_sizes": [],
+            "forget_accuracy_after": 0.8333333333333334,
+            "forget_accuracy_before": 0.8333333333333334,
+            "forget_loss_after": 0.19827175321153134,
+            "forget_loss_before": 0.19827175321153132,
+            "mia_auc_after": 0.5688997821350763,
+            "mia_auc_before": 0.5688997821350763,
+            "qfi_condition_number": 4.4095918037089525,
+            "qfi_trace_after": 40.77454242188915,
+            "qfi_trace_before": 40.77454242188915,
+            "retain_accuracy_after": 0.75,
+            "retain_accuracy_before": 0.75,
+            "retain_loss_after": 0.19043889757295943,
+            "retain_loss_before": 0.19043889757295943,
+            "retrain_forget_accuracy": 0.8333333333333334,
+            "retrain_retain_accuracy": 0.75,
+            "shap_drop_mean": 0.0,
+            "unlearning_steps": 0.0
           }
         },
         "main": {
           "excluded_client": "client_0",
-          "forget_set_accuracy_after": 0.0,
-          "forget_set_accuracy_before": 0.0,
+          "forget_set_accuracy": 0.8333333333333334,
+          "forget_set_loss": 0.19827175321153134,
           "global_weights": [
             [
               [
-                0.05,
-                0.05,
-                0.05
+                0.16785352584497976,
+                0.06562415817259953,
+                0.0021090048346489097
               ],
               [
-                0.05,
-                0.05,
-                0.05
+                0.06196474075221198,
+                -0.10374844520452953,
+                0.020943769083475033
               ],
               [
-                0.05,
-                0.05,
-                0.05
+                -0.001390678409301617,
+                -0.19874318638461963,
+                0.10028318666676153
               ],
               [
-                0.05,
-                0.05,
-                0.05
+                0.06878320863821286,
+                -0.06919712831755201,
+                -0.009408777144948074
               ]
             ],
             [
               [
-                0.05,
-                0.05,
-                0.05
+                0.07236312328008757,
+                -0.029568481168184488,
+                -0.0019686792280107883
               ],
               [
-                0.05,
-                0.05,
-                0.05
+                -0.12514927290827502,
+                0.08364605225086796,
+                0.0325507413324396
               ],
               [
-                0.05,
-                0.05,
-                0.05
+                0.040568804997720365,
+                -0.13735538526368818,
+                0.1784124996248208
               ],
               [
-                0.05,
-                0.05,
-                0.05
+                0.025406767919950266,
+                -0.058365553461204284,
+                0.2118106665969271
+              ]
+            ],
+            [
+              [
+                -0.010362891490979038,
+                -0.12810762185147764,
+                -0.04052278554276867
+              ],
+              [
+                -0.2311239968161946,
+                0.07949371150383915,
+                -0.04164743185200186
+              ],
+              [
+                -0.07166997924180249,
+                -0.011297965253187794,
+                -0.16247414343966227
+              ],
+              [
+                0.05160202888387634,
+                -0.20987027692063043,
+                -0.06815026856409634
+              ]
+            ],
+            [
+              [
+                -0.12042198455997327,
+                0.1461975627213524,
+                0.1766160877929334
+              ],
+              [
+                -0.032941375191306514,
+                0.08407332421435358,
+                -0.017998640125235034
+              ],
+              [
+                0.058116015394279706,
+                -0.2140130960571594,
+                -0.1708339203167056
+              ],
+              [
+                -0.18030986584797412,
+                0.0383121851757512,
+                0.22475950528076996
               ]
             ]
           ],
-          "mask_density": 0.25,
-          "mia_success_rate_after": 0.6666666666666666,
-          "mia_success_rate_before": 0.6666666666666666,
-          "qfi_trace_after": 4.663606094543489,
-          "qfi_trace_before": 4.663606094543489,
-          "random_baseline_accuracy": 0.5,
+          "mia_auc": 0.5688997821350763,
+          "qfi_trace": 40.77454242188915,
           "remaining_clients": 1.0,
-          "retain_set_accuracy_after": 0.0,
-          "retain_set_accuracy_before": 0.0,
-          "shap_after_mean": 0.0014857563394448426,
-          "shap_before_mean": 0.0014857563394448426,
-          "shap_drop_mean": 0.0
+          "retain_set_accuracy": 0.75,
+          "retain_set_loss": 0.19043889757295943,
+          "uninformed_accuracy": 0.6666666666666666
         }
       }
     }

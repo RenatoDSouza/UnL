@@ -10,6 +10,7 @@ model, so the expensive full training happens only once.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Callable
 
 import numpy as np
 from pennylane import numpy as pnp
@@ -28,14 +29,23 @@ class QFIUnlearningRun:
     encoding: str = "angle"
     data_reuploads: int = 1
 
-    def run(self, num_rounds: int = 1) -> dict[str, float | dict[str, float]]:
+    def run(
+        self,
+        num_rounds: int = 1,
+        on_round_complete: Callable[[object], None] | None = None,
+    ) -> dict[str, float | dict[str, float]]:
         clients = self.training_run.clients
         active_clients = [c for c in clients if c.client_id != self.excluded_client_id]
         excluded = [c for c in clients if c.client_id == self.excluded_client_id]
+        if len(excluded) != 1:
+            raise ValueError(f"excluded_client_id must identify exactly one client; got {self.excluded_client_id!r}")
         if not active_clients:
             raise ValueError("At least one active client is required")
 
-        base_results = FederatedTrainingRun(self.training_run.server, clients).run(num_rounds=num_rounds)
+        base_results = FederatedTrainingRun(self.training_run.server, clients).run(
+            num_rounds=num_rounds,
+            on_round_complete=on_round_complete,
+        )
         num_wires = active_clients[0].x_train.shape[1]
         model = QuantumClassifier(
             num_wires=num_wires,
@@ -46,10 +56,10 @@ class QFIUnlearningRun:
         )
         model.weights = pnp.array(base_results[-1].global_weights, requires_grad=True).reshape(model.weights.shape)
 
-        forget_x = excluded[0].x_train if excluded else np.empty((0, num_wires))
-        forget_y = excluded[0].y_train if excluded else np.empty((0,))
-        forget_x_eval = excluded[0].x_eval if excluded and excluded[0].x_eval is not None else np.empty((0, num_wires))
-        forget_y_eval = excluded[0].y_eval if excluded and excluded[0].y_eval is not None else np.empty((0,))
+        forget_x = excluded[0].x_train
+        forget_y = excluded[0].y_train
+        forget_x_eval = excluded[0].x_eval if excluded[0].x_eval is not None else np.empty((0, num_wires))
+        forget_y_eval = excluded[0].y_eval if excluded[0].y_eval is not None else np.empty((0,))
         retain_x = np.concatenate([c.x_train for c in active_clients], axis=0)
         retain_y = np.concatenate([c.y_train for c in active_clients], axis=0)
 

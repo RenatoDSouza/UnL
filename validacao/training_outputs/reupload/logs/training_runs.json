@@ -3,11 +3,19 @@
     {
       "encoding": "reupload",
       "metrics": {
-        "num_clients": 2.0
+        "global_accuracy": 0.7916666666666666,
+        "global_loss": 0.1943553253922454,
+        "num_clients": 2.0,
+        "train_accuracy": 0.7916666666666666,
+        "train_loss": 0.18836511376121556
       },
       "rounds": [
         {
-          "num_clients": 2.0
+          "global_accuracy": 0.7916666666666666,
+          "global_loss": 0.1943553253922454,
+          "num_clients": 2.0,
+          "train_accuracy": 0.7916666666666666,
+          "train_loss": 0.18836511376121556
         }
       ],
       "seed": 7

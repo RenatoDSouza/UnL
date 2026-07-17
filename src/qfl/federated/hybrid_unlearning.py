@@ -10,8 +10,9 @@ Method summary (the paper's contribution)
    responsible for memorising the client to be forgotten.
 3. **QFI-preconditioned ascent.** Perform natural-gradient *ascent* on the
    forget-set loss, restricted to the masked parameters and pre-conditioned by
-   the quantum Fisher information matrix, until the forget performance falls
-   back to the uninformed (retrain-equivalent) baseline.
+   the pure-state QFIM. Each candidate is compared to a retrain-without-client
+   reference computed before unlearning; backtracking and rollback preserve the
+   best observed checkpoint.
 
 Evaluation reports forget/retain accuracy and loss, membership-inference AUC
 (members = forget-set, non-members = held-out), and the QFI trace.
@@ -25,7 +26,7 @@ import numpy as np
 import pennylane as qml
 from pennylane import numpy as pnp
 
-from qfl.federated.metrics import evaluate_accuracy, majority_class_rate
+from qfl.federated.metrics import evaluate_accuracy
 from qfl.federated.mia import membership_inference_auc
 from qfl.quantum.model import QuantumClassifier
 
@@ -44,9 +45,12 @@ class UnlearningReport:
     retain_loss_after: float
     mia_auc_before: float
     mia_auc_after: float
-    uninformed_accuracy: float
+    retrain_forget_accuracy: float
+    retrain_retain_accuracy: float
     unlearning_steps: int
     shap_drop_mean: float
+    qfi_condition_number: float | None
+    accepted_step_sizes: tuple[float, ...]
 
 
 class HybridSHAPQFIUnlearner:
@@ -127,26 +131,42 @@ class HybridSHAPQFIUnlearner:
         return (shap_values >= threshold).astype(float)
 
     # --------------------------------------------------------------- unlearning
+    def _qfi_inverse(self, x_forget: np.ndarray, damping: float) -> tuple[np.ndarray, float]:
+        qfi = np.asarray(self.model.qfi_matrix(x_forget), dtype=float)
+        qfi = (qfi + qfi.T) / 2.0
+        eigenvalues, eigenvectors = np.linalg.eigh(qfi)
+        if not np.isfinite(eigenvalues).all() or eigenvalues[0] < -1e-8:
+            raise ValueError("Invalid QFIM supplied to natural-gradient solver")
+        clipped = np.maximum(eigenvalues, damping)
+        condition = float(clipped[-1] / clipped[0])
+        inverse = (eigenvectors / clipped) @ eigenvectors.T
+        return inverse, condition
+
     def ascent(
         self,
         x_forget: np.ndarray,
         y_forget: np.ndarray,
+        x_retain: np.ndarray,
+        y_retain: np.ndarray,
         mask: np.ndarray,
         use_qfi: bool,
+        retrain_forget_accuracy: float,
+        retrain_retain_accuracy: float,
+        retain_loss_before: float,
         lr: float = 0.4,
         max_steps: int = 12,
         damping: float = 1e-3,
-        target_accuracy: float | None = None,
-    ) -> int:
+        target_tolerance: float = 0.02,
+    ) -> tuple[int, float | None, tuple[float, ...]]:
         """(QFI-preconditioned) gradient *ascent* on the forget-set loss.
 
-        Ascends along the masked gradient, optionally pre-conditioned by the
-        inverse QFI, and stops early once forget accuracy drops to
-        ``target_accuracy`` (the uninformed/retrain-equivalent level), avoiding
-        over-forgetting. Returns the number of steps actually taken.
+        Uses an eigendecomposition with damping for the inverse QFIM. A
+        backtracking line search only accepts a candidate that improves a joint
+        distance to the retrained reference; the best checkpoint is restored at
+        the end, so a step cannot silently over-forget the client data.
         """
         if len(x_forget) == 0 or len(y_forget) == 0:
-            return 0
+            return 0, None, ()
 
         def loss_fn(flat_weights):
             # Direct assignment keeps the autograd tape connected (see client.py).
@@ -154,24 +174,46 @@ class HybridSHAPQFIUnlearner:
             return self.model.loss(x_forget, y_forget)
 
         qfi_inv = None
+        qfi_condition = None
         if use_qfi:
-            qfi = np.asarray(self.model.qfi_matrix(x_forget))
-            qfi_inv = np.linalg.inv(qfi + damping * np.eye(qfi.shape[0]))
+            qfi_inv, qfi_condition = self._qfi_inverse(x_forget, damping)
+
+        def objective() -> tuple[float, float]:
+            forget_distance = abs(evaluate_accuracy(self.model, x_forget, y_forget) - retrain_forget_accuracy)
+            retain_accuracy_drop = max(0.0, retrain_retain_accuracy - evaluate_accuracy(self.model, x_retain, y_retain))
+            retain_loss_increase = max(0.0, float(self.model.loss(x_retain, y_retain)) - retain_loss_before)
+            return forget_distance + retain_accuracy_drop + retain_loss_increase, forget_distance
 
         weights = pnp.array(self._flatten(), requires_grad=True)
+        best_weights = np.asarray(weights, dtype=float).copy()
+        best_objective, forget_distance = objective()
         steps = 0
+        accepted_sizes: list[float] = []
         for _ in range(max(1, max_steps)):
             grad = np.asarray(qml.grad(loss_fn)(weights)) * mask
             if not grad.any():
                 break
             direction = qfi_inv @ grad if qfi_inv is not None else grad
-            weights = pnp.array(np.asarray(weights) + lr * direction, requires_grad=True)
-            self._assign_weights(np.asarray(weights))
-            steps += 1
-            if target_accuracy is not None and evaluate_accuracy(self.model, x_forget, y_forget) <= target_accuracy:
+            direction = direction * mask
+            accepted = False
+            for step_size in (lr, lr / 2.0, lr / 4.0, lr / 8.0, lr / 16.0):
+                candidate = np.asarray(weights, dtype=float) + step_size * direction
+                self._assign_weights(candidate)
+                candidate_objective, candidate_distance = objective()
+                if candidate_objective + 1e-12 < best_objective:
+                    weights = pnp.array(candidate, requires_grad=True)
+                    best_weights = candidate.copy()
+                    best_objective, forget_distance = candidate_objective, candidate_distance
+                    accepted_sizes.append(step_size)
+                    steps += 1
+                    accepted = True
+                    break
+            if not accepted:
                 break
-        self._assign_weights(np.asarray(weights))
-        return steps
+            if forget_distance <= target_tolerance:
+                break
+        self._assign_weights(best_weights)
+        return steps, qfi_condition, tuple(accepted_sizes)
 
     # --------------------------------------------------------------------- run
     def run(
@@ -188,6 +230,8 @@ class HybridSHAPQFIUnlearner:
         max_steps: int = 12,
         mode: str = "shap_qfi",
         seed: int = 0,
+        retrain_forget_accuracy: float | None = None,
+        retrain_retain_accuracy: float | None = None,
     ) -> tuple[UnlearningReport, dict[str, np.ndarray]]:
         x_forget_eval = np.empty((0, self.model.num_wires)) if x_forget_eval is None else x_forget_eval
         y_forget_eval = np.empty((0,)) if y_forget_eval is None else y_forget_eval
@@ -197,8 +241,6 @@ class HybridSHAPQFIUnlearner:
 
         def _mia():
             return membership_inference_auc(self.model, x_forget, y_forget, x_forget_eval, y_forget_eval)
-
-        uninformed = majority_class_rate(y_forget if len(y_forget) else y_retain)
 
         qfi_trace_before = self.model.qfi_trace(x_forget if len(x_forget) else x_retain[:1])
         forget_accuracy_before = evaluate_accuracy(self.model, x_forget, y_forget)
@@ -211,19 +253,25 @@ class HybridSHAPQFIUnlearner:
 
         if len(x_forget) == 0 or len(y_forget) == 0:
             mode = "no_unlearning"
+        if mode != "no_unlearning" and (retrain_forget_accuracy is None or retrain_retain_accuracy is None):
+            raise ValueError("Mutating unlearning requires retrain_forget_accuracy and retrain_retain_accuracy")
+        reference_forget = forget_accuracy_before if retrain_forget_accuracy is None else retrain_forget_accuracy
+        reference_retain = retain_accuracy_before if retrain_retain_accuracy is None else retrain_retain_accuracy
 
         steps = 0
+        qfi_condition = None
+        accepted_step_sizes: tuple[float, ...] = ()
         if mode == "no_unlearning":
             mask = np.zeros_like(shap_before)
         elif mode == "qfi_only":
             mask = np.ones_like(shap_before)
-            steps = self.ascent(x_forget, y_forget, mask, use_qfi=True, lr=lr, max_steps=max_steps, target_accuracy=uninformed)
+            steps, qfi_condition, accepted_step_sizes = self.ascent(x_forget, y_forget, x_retain, y_retain, mask, True, reference_forget, reference_retain, retain_loss_before, lr, max_steps)
         elif mode == "shap_only":
             mask = self.shap_mask(shap_before, threshold_quantile=mask_quantile)
-            steps = self.ascent(x_forget, y_forget, mask, use_qfi=False, lr=lr, max_steps=max_steps, target_accuracy=uninformed)
+            steps, qfi_condition, accepted_step_sizes = self.ascent(x_forget, y_forget, x_retain, y_retain, mask, False, reference_forget, reference_retain, retain_loss_before, lr, max_steps)
         elif mode == "shap_qfi":
             mask = self.shap_mask(shap_before, threshold_quantile=mask_quantile)
-            steps = self.ascent(x_forget, y_forget, mask, use_qfi=True, lr=lr, max_steps=max_steps, target_accuracy=uninformed)
+            steps, qfi_condition, accepted_step_sizes = self.ascent(x_forget, y_forget, x_retain, y_retain, mask, True, reference_forget, reference_retain, retain_loss_before, lr, max_steps)
         else:
             raise ValueError(f"Unknown unlearning mode: {mode}")
 
@@ -248,8 +296,11 @@ class HybridSHAPQFIUnlearner:
             retain_loss_after=retain_loss_after,
             mia_auc_before=mia_before,
             mia_auc_after=mia_after,
-            uninformed_accuracy=uninformed,
+            retrain_forget_accuracy=reference_forget,
+            retrain_retain_accuracy=reference_retain,
             unlearning_steps=steps,
             shap_drop_mean=float(np.mean(np.abs(shap_before) - np.abs(shap_after))) if shap_before.size else 0.0,
+            qfi_condition_number=qfi_condition,
+            accepted_step_sizes=accepted_step_sizes,
         )
         return report, {"shap_before": shap_before, "shap_after": shap_after, "mask": mask}

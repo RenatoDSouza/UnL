@@ -55,9 +55,7 @@ Um levantamento detalhado das mudanças locais mais recentes em relação à
 - **Linguagem**: Python 3.10+
 - **Biblioteca quântica**: `PennyLane`
 - **Backend quântico preferencial**: `lightning.gpu`
-- **Fallbacks automáticos**:
-  - `lightning.qubit`
-  - `default.qubit`
+- **Execução CUDA obrigatória**: `lightning.gpu` (sem fallback automático para CPU)
 - **Bibliotecas auxiliares**:
   - `NumPy`
   - `PyTorch`
@@ -95,14 +93,16 @@ python3 --version
 
 ### 2. GPU
 
-O projeto tenta usar GPU via `lightning.gpu` quando disponível.
+O projeto exige GPU via `lightning.gpu` nas configurações padrão.
 
 Importante:
 
 - ter drivers NVIDIA compatíveis;
 - ter CUDA corretamente instalado;
 - ter uma versão de `PennyLane` e `pennylane-lightning` compatível com GPU;
-- se a GPU não estiver disponível, o projeto faz fallback automático para CPU.
+- se a GPU não estiver disponível, a execução falha explicitamente; isso evita
+  produzir resultados experimentais em CPU sem registro. `prefer_gpu=False` é
+  reservado a testes unitários locais.
 
 ### 3. Ambiente virtual
 
@@ -224,6 +224,24 @@ Fluxo:
 7. Aplica unlearning híbrido SHAP + QFI.
 8. Salva um resumo agregado em `experiments/qfl_unlearning_qfi/outputs/unlearning_summary.json`.
 9. Exporta logs por seed em JSON e CSV.
+
+### 3. Gerando gráfico comparativo de ablação
+
+Após a execução do experimento de unlearning ou do teste de fumaça (smoke test), você pode gerar um gráfico comparativo em barras comparando a acurácia (no conjunto esquecido e mantido) e a invasão de privacidade (ROC-AUC do MIA) de todas as abordagens.
+
+Execute o script de plotagem:
+
+```bash
+python3 scripts/plot_ablation.py
+```
+
+O script detectará automaticamente o arquivo `unlearning_summary.json` gerado mais recentemente e salvará a imagem comparativa correspondente em um diretório `plots/` no mesmo nível da saída (ex: `experiments/qfl_unlearning_qfi/outputs/plots/ablation_comparison.png`).
+
+Você também pode fornecer caminhos específicos de entrada e saída:
+
+```bash
+python3 scripts/plot_ablation.py --input caminho/para/unlearning_summary.json --output caminho/para/saida.png
+```
 
 ## Configurações
 

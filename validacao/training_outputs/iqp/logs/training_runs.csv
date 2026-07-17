@@ -1,2 +1,6 @@
 seed,encoding,scope,name,value
 7,iqp,metrics,num_clients,2.0
+7,iqp,metrics,train_loss,0.2285051302434076
+7,iqp,metrics,train_accuracy,0.75
+7,iqp,metrics,global_accuracy,0.75
+7,iqp,metrics,global_loss,0.22974602071786002

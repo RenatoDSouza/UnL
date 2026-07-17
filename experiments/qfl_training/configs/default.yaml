@@ -6,11 +6,12 @@ seed: 42
 seeds: [42, 43, 44]
 encoding_modes: [angle, iqp, reupload]
 data_reuploads: 2
-prefer_gpu: false
+prefer_gpu: true
 
-feature_mode: pca
+# Usa exclusivamente os dígitos 0 (classe 0) e 1 (classe 1) do FEMNIST.
+feature_mode: binary
 n_features: 8
-num_layers: 2
+num_layers: 6
 train_epochs: 8
 train_lr: 0.2
 max_samples_per_client: 120

@@ -1,26 +1,65 @@
 {
-  "current_step": 3,
+  "current_step": 5,
+  "encoding": "angle",
   "eta_seconds": 0.0,
   "label": "QFL training (angle, seed=43)",
+  "metrics": {
+    "global_accuracy": 0.6866666666666666,
+    "global_loss": 0.197584513556913,
+    "num_clients": 5.0,
+    "train_accuracy": 0.695,
+    "train_loss": 0.19191018230215828
+  },
+  "seed": 43,
   "status": "completed",
   "summary": {
     "encoding": "angle",
     "metrics": {
-      "num_clients": 5.0
+      "global_accuracy": 0.6866666666666666,
+      "global_loss": 0.197584513556913,
+      "num_clients": 5.0,
+      "train_accuracy": 0.695,
+      "train_loss": 0.19191018230215828
     },
     "rounds": [
       {
-        "num_clients": 5.0
+        "global_accuracy": 0.67,
+        "global_loss": 0.20393432546304613,
+        "num_clients": 5.0,
+        "train_accuracy": 0.68,
+        "train_loss": 0.1980408508074426
       },
       {
-        "num_clients": 5.0
+        "global_accuracy": 0.6766666666666666,
+        "global_loss": 0.20204239092292017,
+        "num_clients": 5.0,
+        "train_accuracy": 0.6833333333333333,
+        "train_loss": 0.1962039705189035
       },
       {
-        "num_clients": 5.0
+        "global_accuracy": 0.6833333333333333,
+        "global_loss": 0.20040358300605177,
+        "num_clients": 5.0,
+        "train_accuracy": 0.69,
+        "train_loss": 0.19462037109147323
+      },
+      {
+        "global_accuracy": 0.6833333333333333,
+        "global_loss": 0.19893682520792544,
+        "num_clients": 5.0,
+        "train_accuracy": 0.6883333333333334,
+        "train_loss": 0.1932081438117436
+      },
+      {
+        "global_accuracy": 0.6866666666666666,
+        "global_loss": 0.197584513556913,
+        "num_clients": 5.0,
+        "train_accuracy": 0.695,
+        "train_loss": 0.19191018230215828
       }
     ],
     "seed": 43
   },
-  "total_steps": 3,
-  "updated_at_utc": "2026-07-08T15:07:05.040785+00:00"
+  "total_steps": 5,
+  "updated_at_utc": "2026-07-17T04:18:28.122046+00:00"
 }

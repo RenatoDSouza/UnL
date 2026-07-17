@@ -1,0 +1,8 @@
+Status: completed
+Experimento: QFL training (reupload, seed=7)
+Progresso: 1/1
+Atualizado (UTC): 2026-07-17T16:41:04.712151+00:00
+ETA (segundos): 0.0
+seed: 7
+encoding: "reupload"
+metrics: {"global_accuracy": 0.7916666666666666, "global_loss": 0.1943553253922454, "num_clients": 2.0, "train_accuracy": 0.7916666666666666, "train_loss": 0.18836511376121556}

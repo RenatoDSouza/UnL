@@ -32,7 +32,7 @@ from qfl.federated.server import FederatedServer
 from qfl.federated.strategy import FederatedTrainingRun
 from qfl.federated.hybrid_unlearning import HybridSHAPQFIUnlearner
 from qfl.federated.unlearning import QFIUnlearningRun
-from qfl.utils.checkpoint import load_checkpoint, save_checkpoint
+from qfl.utils.checkpoint import load_checkpoint, save_checkpoint, save_progress_checkpoint
 from qfl.utils.io import ensure_dir, write_json
 from qfl.utils.progress import ProgressTracker
 from qfl.utils.seed import set_seed
@@ -97,6 +97,9 @@ def experiment_metadata(config: TrainingExperimentConfig | UnlearningExperimentC
         "prefer_gpu": config.prefer_gpu,
         "encoding_modes": _encoding_list(getattr(config, "encoding_modes", None)),
         "data_reuploads": getattr(config, "data_reuploads", 1),
+        "num_layers": getattr(config, "num_layers", 2),
+        "qfi_definition": "pure_state_qfim=4*fubini_study_metric; block-diagonal approximation",
+        "gpu_policy": "lightning.gpu required when prefer_gpu=true; no CPU fallback",
     }
 
 
@@ -115,6 +118,8 @@ def _normalize_config(config: TrainingExperimentConfig | UnlearningExperimentCon
         raise ValueError("num_clients must be positive")
     if config.num_rounds <= 0:
         raise ValueError("num_rounds must be positive")
+    if not config.prefer_gpu:
+        raise ValueError("Experiment execution requires CUDA/lightning.gpu; prefer_gpu cannot be false")
     seeds = _seed_list(config.seed, config.seeds)
     if not all(isinstance(seed, int) for seed in seeds):
         raise ValueError("seeds must contain integers")
@@ -135,7 +140,10 @@ def _aggregate_runs(runs: list[dict[str, Any]]) -> dict[str, Any]:
         if "metrics" in run and isinstance(run["metrics"], dict):
             flattened.append(run["metrics"])
         elif "summary" in run and isinstance(run["summary"], dict):
-            flattened.append(run["summary"])
+            if "main" in run["summary"] and isinstance(run["summary"]["main"], dict):
+                flattened.append(run["summary"]["main"])
+            else:
+                flattened.append(run["summary"])
         else:
             flattened.append(run)
     numeric_keys = sorted({key for run in flattened for key, value in run.items() if isinstance(value, (int, float))})
@@ -288,7 +296,10 @@ def _build_clients(num_clients: int, dataset_path: str | None = None, prefer_gpu
         )
         for split in client_splits
     ]
-    initial_weights = 0.1 * np.random.randn(num_layers, client_splits[0].x.shape[1], 3)
+    from qfl.quantum.model import QuantumClassifier
+
+    weight_shape = QuantumClassifier.weight_shape(num_layers, client_splits[0].x.shape[1], encoding, data_reuploads)
+    initial_weights = 0.1 * np.random.randn(*weight_shape)
     server = FederatedServer(initial_weights=initial_weights)
     return client_splits, clients, server
 
@@ -321,7 +332,17 @@ def run_training_experiment(config: TrainingExperimentConfig, checkpoint_name: s
             run = FederatedTrainingRun(server=server, clients=clients)
             progress = ProgressTracker(label=f"QFL training ({encoding}, seed={seed})", total_steps=config.num_rounds)
             seed_checkpoint_path = checkpoint_dir / f"{Path(checkpoint_name).stem}_{encoding}_seed{seed}.json"
-            partial = run.run(num_rounds=config.num_rounds)
+            progress_checkpoint_path = seed_checkpoint_path.with_suffix(".txt")
+
+            def save_round_progress(result) -> None:
+                payload = progress.checkpoint_payload(
+                    result.round_index + 1,
+                    {"status": "running", "seed": seed, "encoding": encoding, "metrics": result.metrics},
+                )
+                save_checkpoint(seed_checkpoint_path, payload)
+                save_progress_checkpoint(progress_checkpoint_path, payload)
+
+            partial = run.run(num_rounds=config.num_rounds, on_round_complete=save_round_progress)
             round_metrics = [result.metrics for result in partial]
             for result in partial:
                 LOGGER.info(
@@ -338,10 +359,12 @@ def run_training_experiment(config: TrainingExperimentConfig, checkpoint_name: s
                 "metrics": round_metrics[-1] if round_metrics else {},
             }
             runs.append(seed_summary)
-            save_checkpoint(
-                seed_checkpoint_path,
-                progress.checkpoint_payload(config.num_rounds, {"status": "completed", "summary": seed_summary}),
+            final_payload = progress.checkpoint_payload(
+                config.num_rounds,
+                {"status": "completed", "seed": seed, "encoding": encoding, "metrics": seed_summary["metrics"], "summary": seed_summary},
             )
+            save_checkpoint(seed_checkpoint_path, final_payload)
+            save_progress_checkpoint(progress_checkpoint_path, final_payload)
 
     summary = {
         "metadata": experiment_metadata(config),
@@ -382,7 +405,17 @@ def run_unlearning_experiment(config: UnlearningExperimentConfig, checkpoint_nam
             )
             progress = ProgressTracker(label=f"QFI unlearning ({encoding}, seed={seed})", total_steps=config.num_rounds)
             seed_checkpoint_path = checkpoint_dir / f"{Path(checkpoint_name).stem}_{encoding}_seed{seed}.json"
-            base_result = unlearning_run.run(num_rounds=config.num_rounds)
+            progress_checkpoint_path = seed_checkpoint_path.with_suffix(".txt")
+
+            def save_round_progress(result) -> None:
+                payload = progress.checkpoint_payload(
+                    result.round_index + 1,
+                    {"status": "running", "seed": seed, "encoding": encoding, "metrics": result.metrics},
+                )
+                save_checkpoint(seed_checkpoint_path, payload)
+                save_progress_checkpoint(progress_checkpoint_path, payload)
+
+            base_result = unlearning_run.run(num_rounds=config.num_rounds, on_round_complete=save_round_progress)
             final_weights = np.asarray(base_result["global_weights"], dtype=float)
             model = _build_model_from_weights(
                 clients[0].x_train.shape[1],
@@ -411,10 +444,12 @@ def run_unlearning_experiment(config: UnlearningExperimentConfig, checkpoint_nam
             LOGGER.info("unlearning seed=%s encoding=%s result_keys=%s", seed, encoding, sorted(seed_result.keys()))
             seed_summary = {"seed": seed, "encoding": encoding, "summary": seed_result}
             runs.append(seed_summary)
-            save_checkpoint(
-                seed_checkpoint_path,
-                progress.checkpoint_payload(config.num_rounds, {"status": "completed", "summary": seed_summary}),
+            final_payload = progress.checkpoint_payload(
+                config.num_rounds,
+                {"status": "completed", "seed": seed, "encoding": encoding, "summary": seed_summary},
             )
+            save_checkpoint(seed_checkpoint_path, final_payload)
+            save_progress_checkpoint(progress_checkpoint_path, final_payload)
 
     summary = {
         "metadata": experiment_metadata(config),
@@ -444,6 +479,8 @@ class _ClientSplit:
 def _split_clients(clients: list[FederatedClient], excluded_client_id: str) -> _ClientSplit:
     excluded = [c for c in clients if c.client_id == excluded_client_id]
     active = [c for c in clients if c.client_id != excluded_client_id]
+    if len(excluded) != 1:
+        raise ValueError(f"excluded_client_id must identify exactly one client; got {excluded_client_id!r}")
     if not active:
         raise ValueError("At least one active client is required")
     n_features = active[0].x_train.shape[1]
@@ -474,6 +511,26 @@ def _run_unlearning_baselines(
 ):
     from copy import deepcopy
 
+    # The retrain reference is calculated first and passed into every mutating
+    # variant. It is therefore a genuine stopping/evaluation reference, not a
+    # post-hoc number reported after a majority-class proxy was used.
+    set_seed(seed)
+    retrained_model = _retrain_without_excluded(split.active_clients, num_rounds, prefer_gpu, encoding, data_reuploads, num_layers)
+    forget_acc = evaluate_accuracy(retrained_model, split.forget_x, split.forget_y)
+    retain_acc = evaluate_accuracy(retrained_model, split.retain_x, split.retain_y)
+    mia_auc_val = membership_inference_auc(retrained_model, split.forget_x, split.forget_y, split.forget_x_eval, split.forget_y_eval)
+    qfi_trace_val = retrained_model.qfi_trace(split.forget_x[: min(8, len(split.forget_x))]) if len(split.forget_x) else 0.0
+    retrain_reference = {
+        "forget_accuracy": forget_acc,
+        "forget_accuracy_after": forget_acc,
+        "retain_accuracy": retain_acc,
+        "retain_accuracy_after": retain_acc,
+        "mia_auc": mia_auc_val,
+        "mia_auc_after": mia_auc_val,
+        "qfi_trace": qfi_trace_val,
+        "qfi_trace_after": qfi_trace_val,
+    }
+
     baselines: dict[str, Any] = {}
     for mode in ("no_unlearning", "shap_only", "qfi_only", "shap_qfi"):
         baseline_model = deepcopy(model)
@@ -482,6 +539,7 @@ def _run_unlearning_baselines(
             x_forget_eval=split.forget_x_eval, y_forget_eval=split.forget_y_eval,
             num_shap_permutations=shap_permutations, mask_quantile=mask_quantile,
             lr=unlearn_lr, max_steps=unlearn_max_steps, mode=mode, seed=seed,
+            retrain_forget_accuracy=forget_acc, retrain_retain_accuracy=retain_acc,
         )
         baselines[mode] = {
             "forget_accuracy_before": report.forget_accuracy_before,
@@ -496,16 +554,14 @@ def _run_unlearning_baselines(
             "mia_auc_after": report.mia_auc_after,
             "qfi_trace_before": report.qfi_trace_before,
             "qfi_trace_after": report.qfi_trace_after,
+            "retrain_forget_accuracy": report.retrain_forget_accuracy,
+            "retrain_retain_accuracy": report.retrain_retain_accuracy,
+            "qfi_condition_number": report.qfi_condition_number,
+            "accepted_step_sizes": list(report.accepted_step_sizes),
             "unlearning_steps": float(report.unlearning_steps),
             "shap_drop_mean": report.shap_drop_mean,
         }
-    retrained_model = _retrain_without_excluded(split.active_clients, num_rounds, prefer_gpu, encoding, data_reuploads, num_layers)
-    baselines["retrain_complete"] = {
-        "forget_accuracy": evaluate_accuracy(retrained_model, split.forget_x, split.forget_y),
-        "retain_accuracy": evaluate_accuracy(retrained_model, split.retain_x, split.retain_y),
-        "mia_auc": membership_inference_auc(retrained_model, split.forget_x, split.forget_y, split.forget_x_eval, split.forget_y_eval),
-        "qfi_trace": retrained_model.qfi_trace(split.forget_x[: min(8, len(split.forget_x))]) if len(split.forget_x) else 0.0,
-    }
+    baselines["retrain_complete"] = retrain_reference
     return baselines
 
 
@@ -519,7 +575,8 @@ def _retrain_without_excluded(
 ):
     from qfl.quantum.model import QuantumClassifier
 
-    server = FederatedServer(initial_weights=0.1 * np.random.randn(num_layers, active_clients[0].x_train.shape[1], 3))
+    weight_shape = QuantumClassifier.weight_shape(num_layers, active_clients[0].x_train.shape[1], encoding, data_reuploads)
+    server = FederatedServer(initial_weights=0.1 * np.random.randn(*weight_shape))
     for client in active_clients:
         client.prefer_gpu = prefer_gpu
         client.encoding = encoding

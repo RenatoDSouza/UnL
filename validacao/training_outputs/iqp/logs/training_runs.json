@@ -3,11 +3,19 @@
     {
       "encoding": "iqp",
       "metrics": {
-        "num_clients": 2.0
+        "global_accuracy": 0.75,
+        "global_loss": 0.22974602071786002,
+        "num_clients": 2.0,
+        "train_accuracy": 0.75,
+        "train_loss": 0.2285051302434076
       },
       "rounds": [
         {
-          "num_clients": 2.0
+          "global_accuracy": 0.75,
+          "global_loss": 0.22974602071786002,
+          "num_clients": 2.0,
+          "train_accuracy": 0.75,
+          "train_loss": 0.2285051302434076
         }
       ],
       "seed": 7

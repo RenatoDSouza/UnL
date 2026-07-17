@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
+from typing import Callable
 
 import numpy as np
 
@@ -21,7 +22,12 @@ class FederatedTrainingRun:
     clients: list[FederatedClient]
     eval_cap: int = 300
 
-    def run(self, num_rounds: int = 1, initial_weights: np.ndarray | None = None) -> list[FederatedResult]:
+    def run(
+        self,
+        num_rounds: int = 1,
+        initial_weights: np.ndarray | None = None,
+        on_round_complete: Callable[[FederatedResult], None] | None = None,
+    ) -> list[FederatedResult]:
         from tqdm import tqdm
         current_weights = self.server.initial_weights if initial_weights is None else initial_weights
         results: list[FederatedResult] = []
@@ -32,6 +38,8 @@ class FederatedTrainingRun:
             current_weights = np.asarray(result.global_weights)
             self._attach_global_metrics(result, current_weights)
             results.append(result)
+            if on_round_complete:
+                on_round_complete(result)
         return results
 
     def _attach_global_metrics(self, result: FederatedResult, global_weights: np.ndarray) -> None:

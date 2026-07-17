@@ -1,0 +1,59 @@
+# Análise dos Resultados do Smoke Test (com Backtracking e Referência de Retreino)
+
+Este arquivo analisa os dados obtidos na execução do smoke test após a implementação da busca linear com backtracking, QFIM estabilizada e comparação direta com o modelo de retreino.
+
+---
+
+## 1. Dados Obtidos no Smoke Test
+
+Os resultados consolidados das acurácias e passos de desaprendizado para cada encoding foram:
+
+### A. Encoding: ANGLE
+* **`no_unlearning`**: Forget Acc: **75.00%** | Retain Acc: **83.33%** | MIA AUC: **0.5568**
+* **`retrain_complete` (Alvo)**: Forget Acc: **66.67%** | Retain Acc: **83.33%** | MIA AUC: **0.5455**
+* **`shap_qfi` / `qfi_only` / `shap_only`**: Forget Acc: **75.00%** | Retain Acc: **83.33%** | MIA AUC: **0.5568** | Passos: **0.0**
+
+### B. Encoding: IQP
+* **`no_unlearning`**: Forget Acc: **75.00%** | Retain Acc: **75.00%** | MIA AUC: **0.6309**
+* **`retrain_complete` (Alvo)**: Forget Acc: **75.00%** | Retain Acc: **75.00%** | MIA AUC: **0.6251**
+* **`shap_qfi` / `qfi_only` / `shap_only`**: Forget Acc: **75.00%** | Retain Acc: **75.00%** | MIA AUC: **0.6309** | Passos: **0.0**
+
+### C. Encoding: REUPLOAD
+* **`no_unlearning`**: Forget Acc: **83.33%** | Retain Acc: **75.00%** | MIA AUC: **0.5689**
+* **`retrain_complete` (Alvo)**: Forget Acc: **83.33%** | Retain Acc: **75.00%** | MIA AUC: **0.5535**
+* **`shap_qfi` / `qfi_only` / `shap_only`**: Forget Acc: **83.33%** | Retain Acc: **75.00%** | MIA AUC: **0.5689** | Passos: **0.0**
+
+---
+
+## 2. Por que todos os métodos executaram 0 passos?
+
+A execução de 0 passos em todos os baselines de desaprendizado revela dois comportamentos distintos do algoritmo:
+
+### Caso 1: O Alvo já foi alcançado no início (IQP e REUPLOAD)
+Para os encodings `iqp` e `reupload`, o modelo original (`no_unlearning`) e o modelo ideal retreinado (`retrain_complete`) alcançaram exatamente a mesma acurácia no conjunto a ser esquecido (**75.00%** para IQP e **83.33%** para Reupload).
+* Como o objetivo do desaprendizado é aproximar o modelo da referência de retreino, a distância inicial de acurácia foi de **0.0**.
+* Como a tolerância alvo (`target_tolerance`) é `0.02`, o critério de parada foi satisfeito na iteração 0, fazendo com que o algoritmo parasse imediatamente sem aplicar alterações (preservando o modelo original).
+
+### Caso 2: Rejeição Sistemática de Passos por Mismatch Discreto/Contínuo (ANGLE)
+No caso do `angle`, a acurácia inicial do forget era **75.00%** (9/12 amostras corretas) e a acurácia de retreino era **66.67%** (8/12 amostras corretas), resultando em uma distância de acurácia de **0.0833** (> 0.02).
+* O algoritmo tentou dar passos na subida de gradiente com diferentes taxas (`lr`, `lr/2`, ..., `lr/16`).
+* No entanto, a função objetivo conjunta avaliada é:
+  `objective = forget_distance + retain_accuracy_drop + retain_loss_increase`
+* A acurácia é uma função **discreta** (só muda em saltos de `1/12 ≈ 0.0833`). Em contrapartida, a perda no conjunto de retenção (`retain_loss_increase`) é **contínua** (qualquer alteração nos pesos altera o loss).
+* Qualquer atualização infinitesimal de pesos aumentou ligeiramente a perda contínua dos dados mantidos (`retain_loss_increase > 0`) antes que o modelo sofresse uma mudança discreta na acurácia do forget set. Com isso, o valor do `objective` candidato tornou-se maior do que o inicial, fazendo com que a busca linear por backtracking rejeitasse sistematicamente todos os tamanhos de passo propostos.
+
+---
+
+## 3. Sugestão de Melhoria Metodológica
+
+Para corrigir a rejeição sistemática causada pela natureza discreta da acurácia, a métrica de distância do forget set na função objetivo de backtracking deve utilizar a **perda contínua (loss)** em vez da acurácia:
+
+```python
+# Em vez de comparar acurácias discretas:
+forget_distance = abs(evaluate_accuracy(self.model, x_forget, y_forget) - retrain_forget_accuracy)
+
+# Comparar a perda contínua (Mean Squared Error) em relação ao modelo de retreino:
+forget_distance = abs(float(self.model.loss(x_forget, y_forget)) - retrain_forget_loss)
+```
+
+Isso permitirá que o backtracking sintonize o gradiente de forma suave e incremental, aceitando passos que aproximam o comportamento da perda do modelo de retreino sem ser bloqueado pela discretização das acurácias.
